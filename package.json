@@ -1,6 +1,6 @@
 {
   "name": "notes-desktop",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "private": true,
   "description": "A calm, local-first Windows notebook and Markdown reader.",
   "type": "module",
@@ -18,6 +18,7 @@
     "dist:win": "npm run build && electron-builder --win nsis --x64"
   },
   "dependencies": {
+    "@tiptap/extension-code-block": "^3.4.2",
     "@tiptap/extension-image": "^3.4.2",
     "@tiptap/extension-link": "^3.4.2",
     "@tiptap/extension-placeholder": "^3.4.2",

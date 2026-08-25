@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { EditorContent, NodeViewWrapper, ReactNodeViewRenderer, useEditor, type NodeViewProps } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import CodeBlock from '@tiptap/extension-code-block';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
@@ -110,6 +111,10 @@ const ResizableImage = Image.extend({
   },
 });
 
+const LinkableCodeBlock = CodeBlock.extend({
+  marks: 'link',
+});
+
 interface RichEditorProps {
   pageId: string;
   initialHtml: string;
@@ -121,14 +126,21 @@ interface RichEditorProps {
 
 export function RichEditor({ pageId, initialHtml, spellcheck, onChange, onCreateLinkedPage, onOpenPage }: RichEditorProps) {
   const [slashPosition, setSlashPosition] = useState<{ left: number; top: number } | null>(null);
+  const [slashQuery, setSlashQuery] = useState('');
+  const [slashSelected, setSlashSelected] = useState(0);
   const [pageTitleOpen, setPageTitleOpen] = useState(false);
   const [pageTitle, setPageTitle] = useState('');
   const [pageCreating, setPageCreating] = useState(false);
   const slashOpenRef = useRef(false);
+  const slashQueryRef = useRef('');
+  const slashSelectedRef = useRef(0);
+  const runSelectedSlashRef = useRef<(() => void) | null>(null);
+  const moveSlashSelectionRef = useRef<((direction: number) => void) | null>(null);
   const imageInput = useRef<HTMLInputElement>(null);
   const pageTitleInput = useRef<HTMLInputElement>(null);
   const extensions = useMemo(() => [
-    StarterKit.configure({ link: false }),
+    StarterKit.configure({ link: false, codeBlock: false }),
+    LinkableCodeBlock,
     Link.configure({ openOnClick: false, autolink: true, defaultProtocol: 'https', protocols: ['http', 'https', 'notes'] }),
     ResizableImage.configure({ inline: false, allowBase64: false }), Placeholder.configure({ placeholder: "Write something, or type '/' for commands…" }),
     TaskList, TaskItem.configure({ nested: true }), Table.configure({ resizable: true }), TableRow, TableHeader, TableCell,
@@ -159,24 +171,45 @@ export function RichEditor({ pageId, initialHtml, spellcheck, onChange, onCreate
       },
       handleClick: (_view, _position, event) => {
         const anchor = (event.target as HTMLElement).closest('a');
-        const match = /^notes:\/\/page\/([\w-]+)$/i.exec(anchor?.getAttribute('href') || '');
-        if (!match) return false;
-        event.preventDefault(); onOpenPage(match[1]); return true;
+        const href = anchor?.getAttribute('href') || '';
+        const match = /^notes:\/\/page\/([\w-]+)$/i.exec(href);
+        if (match) { event.preventDefault(); onOpenPage(match[1]); return true; }
+        if (/^https?:\/\//i.test(href)) { event.preventDefault(); void window.notes.system.openExternal(href); return true; }
+        return false;
       },
       handleKeyDown: (_view, event) => {
-        if (event.key === 'Escape' && slashOpenRef.current) { slashOpenRef.current = false; setSlashPosition(null); return true; }
+        if (!slashOpenRef.current) return false;
+        if (event.key === 'Escape') { slashOpenRef.current = false; setSlashPosition(null); return true; }
+        if (event.key === 'ArrowDown') { event.preventDefault(); moveSlashSelectionRef.current?.(1); return true; }
+        if (event.key === 'ArrowUp') { event.preventDefault(); moveSlashSelectionRef.current?.(-1); return true; }
+        if (event.key === 'Enter' || event.key === 'Tab') { event.preventDefault(); runSelectedSlashRef.current?.(); return true; }
         return false;
       },
     },
     onUpdate: ({ editor: activeEditor }) => {
       const html = activeEditor.getHTML(); onChange(html, turndown.turndown(html));
       const { $from } = activeEditor.state.selection;
-      const open = $from.parent.type.name === 'paragraph' && $from.parent.textContent.endsWith('/');
+      const beforeCursor = $from.parent.textBetween(0, $from.parentOffset, undefined, '\ufffc');
+      const slashMatch = /(?:^|\s)\/([a-z0-9-]*)$/i.exec(beforeCursor);
+      const open = $from.parent.type.name === 'paragraph' && Boolean(slashMatch);
       slashOpenRef.current = open;
       if (open) {
+        const query = (slashMatch?.[1] || '').toLowerCase();
+        if (query !== slashQueryRef.current) {
+          slashQueryRef.current = query;
+          slashSelectedRef.current = 0;
+          setSlashQuery(query);
+          setSlashSelected(0);
+        }
         const coords = activeEditor.view.coordsAtPos(activeEditor.state.selection.from);
         setSlashPosition({ left: Math.max(12, Math.min(coords.left, window.innerWidth - 330)), top: Math.max(12, Math.min(coords.bottom + 7, window.innerHeight - 500)) });
-      } else setSlashPosition(null);
+      } else {
+        slashQueryRef.current = '';
+        slashSelectedRef.current = 0;
+        setSlashPosition(null);
+        setSlashQuery('');
+        setSlashSelected(0);
+      }
     },
   }, [pageId]);
   useEffect(() => { editor?.setOptions({ editorProps: { attributes: { class: 'prose-editor', spellcheck: String(spellcheck) } } }); }, [editor, spellcheck]);
@@ -192,14 +225,25 @@ export function RichEditor({ pageId, initialHtml, spellcheck, onChange, onCreate
   if (!editor) return null;
   const setLink = () => {
     const previous = editor.getAttributes('link').href as string | undefined;
-    const url = window.prompt('Link URL', previous || 'https://');
+    const { from, to } = editor.state.selection;
+    const selectedText = editor.state.doc.textBetween(from, to, ' ').trim();
+    const suggested = /^https?:\/\/\S+$/i.test(selectedText) ? selectedText : 'https://';
+    const url = window.prompt('Link URL', previous || suggested);
     if (url === null) return;
     if (!url) editor.chain().focus().unsetLink().run(); else editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
   };
   const removeSlash = () => {
     const { from } = editor.state.selection;
-    if (from > 0 && editor.state.doc.textBetween(from - 1, from) === '/') editor.chain().focus().deleteRange({ from: from - 1, to: from }).run();
-    slashOpenRef.current = false; setSlashPosition(null);
+    const { $from } = editor.state.selection;
+    const beforeCursor = $from.parent.textBetween(0, $from.parentOffset, undefined, '\ufffc');
+    const match = /\/[a-z0-9-]*$/i.exec(beforeCursor);
+    if (match) editor.chain().focus().deleteRange({ from: from - match[0].length, to: from }).run();
+    slashOpenRef.current = false;
+    slashQueryRef.current = '';
+    slashSelectedRef.current = 0;
+    setSlashPosition(null);
+    setSlashQuery('');
+    setSlashSelected(0);
   };
   const runSlash = (command: () => void) => { removeSlash(); command(); };
   const openPageTitle = () => {
@@ -230,6 +274,32 @@ export function RichEditor({ pageId, initialHtml, spellcheck, onChange, onCreate
     };
     reader.readAsDataURL(file);
   };
+  const slashCommands = [
+    { id: 'text', label: 'Text', detail: 'Plain paragraph', keywords: 'paragraph', icon: <Type size={16} />, run: () => runSlash(() => editor.chain().focus().setParagraph().run()) },
+    { id: 'heading-1', label: 'Heading 1', detail: 'Large section heading', keywords: 'h1 title', icon: <Heading1 size={16} />, run: () => runSlash(() => editor.chain().focus().toggleHeading({ level: 1 }).run()) },
+    { id: 'heading-2', label: 'Heading 2', detail: 'Medium section heading', keywords: 'h2 subtitle', icon: <Heading2 size={16} />, run: () => runSlash(() => editor.chain().focus().toggleHeading({ level: 2 }).run()) },
+    { id: 'heading-3', label: 'Heading 3', detail: 'Small section heading', keywords: 'h3', icon: <Heading3 size={16} />, run: () => runSlash(() => editor.chain().focus().toggleHeading({ level: 3 }).run()) },
+    { id: 'bullet-list', label: 'Bullet list', detail: 'Simple unordered list', keywords: 'bullets unordered ul', icon: <List size={16} />, run: () => runSlash(() => editor.chain().focus().toggleBulletList().run()) },
+    { id: 'numbered-list', label: 'Numbered list', detail: 'Ordered steps', keywords: 'numbers ordered ol', icon: <ListOrdered size={16} />, run: () => runSlash(() => editor.chain().focus().toggleOrderedList().run()) },
+    { id: 'checklist', label: 'Checklist', detail: 'Track work to do', keywords: 'todo task checkbox', icon: <CheckSquare size={16} />, run: () => runSlash(() => editor.chain().focus().toggleTaskList().run()) },
+    { id: 'quote', label: 'Quote', detail: 'Emphasize a passage', keywords: 'blockquote', icon: <Quote size={16} />, run: () => runSlash(() => editor.chain().focus().toggleBlockquote().run()) },
+    { id: 'code', label: 'Code', detail: 'Fenced code block', keywords: 'codeblock snippet', icon: <Code size={16} />, run: () => runSlash(() => editor.chain().focus().toggleCodeBlock().run()) },
+    { id: 'divider', label: 'Divider', detail: 'Separate sections', keywords: 'line rule hr separator', icon: <Minus size={16} />, run: () => runSlash(() => editor.chain().focus().setHorizontalRule().run()) },
+    { id: 'table', label: 'Table', detail: 'Three by three table', keywords: 'grid rows columns', icon: <Table2 size={16} />, run: () => runSlash(() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()) },
+    { id: 'image', label: 'Image', detail: 'Choose an image', keywords: 'photo picture upload', icon: <ImagePlus size={16} />, run: () => { removeSlash(); imageInput.current?.click(); } },
+    { id: 'page', label: 'Page', detail: 'Create a named child page', keywords: 'new linked child', icon: <FilePlus2 size={16} />, run: openPageTitle },
+  ];
+  const filteredSlashCommands = slashCommands.filter((command) => {
+    const search = `${command.id} ${command.label} ${command.keywords}`.toLowerCase();
+    return !slashQuery || search.includes(slashQuery);
+  });
+  runSelectedSlashRef.current = () => filteredSlashCommands[slashSelectedRef.current]?.run();
+  moveSlashSelectionRef.current = (direction) => {
+    if (!filteredSlashCommands.length) return;
+    const next = (slashSelectedRef.current + direction + filteredSlashCommands.length) % filteredSlashCommands.length;
+    slashSelectedRef.current = next;
+    setSlashSelected(next);
+  };
   const action = (label: string, active: boolean, run: () => void, icon: React.ReactNode) => <button type="button" title={label} aria-label={label} className={active ? 'active' : ''} onMouseDown={(e) => { e.preventDefault(); run(); }}>{icon}</button>;
   return <div className="editor-shell">
     <input ref={imageInput} className="visually-hidden" type="file" accept="image/png,image/jpeg,image/gif,image/webp" onChange={(event) => { addImage(event.target.files?.[0]); event.target.value = ''; }} />
@@ -246,20 +316,16 @@ export function RichEditor({ pageId, initialHtml, spellcheck, onChange, onCreate
       {action('Quote', editor.isActive('blockquote'), () => editor.chain().focus().toggleBlockquote().run(), <Quote size={15} />)}
     </div>
     {slashPosition && <div className="slash-menu" role="menu" aria-label="Insert block" style={slashPosition}>
-      <div className="slash-title">Add a block or page</div>
-      <button onMouseDown={(e) => { e.preventDefault(); runSlash(() => editor.chain().focus().setParagraph().run()); }}><Type size={16} /><span><b>Text</b><small>Plain paragraph</small></span></button>
-      <button onMouseDown={(e) => { e.preventDefault(); runSlash(() => editor.chain().focus().toggleHeading({ level: 1 }).run()); }}><Heading1 size={16} /><span><b>Heading 1</b><small>Large section heading</small></span></button>
-      <button onMouseDown={(e) => { e.preventDefault(); runSlash(() => editor.chain().focus().toggleHeading({ level: 2 }).run()); }}><Heading2 size={16} /><span><b>Heading 2</b><small>Medium section heading</small></span></button>
-      <button onMouseDown={(e) => { e.preventDefault(); runSlash(() => editor.chain().focus().toggleHeading({ level: 3 }).run()); }}><Heading3 size={16} /><span><b>Heading 3</b><small>Small section heading</small></span></button>
-      <button onMouseDown={(e) => { e.preventDefault(); runSlash(() => editor.chain().focus().toggleBulletList().run()); }}><List size={16} /><span><b>Bullet list</b><small>Simple unordered list</small></span></button>
-      <button onMouseDown={(e) => { e.preventDefault(); runSlash(() => editor.chain().focus().toggleOrderedList().run()); }}><ListOrdered size={16} /><span><b>Numbered list</b><small>Ordered steps</small></span></button>
-      <button onMouseDown={(e) => { e.preventDefault(); runSlash(() => editor.chain().focus().toggleTaskList().run()); }}><CheckSquare size={16} /><span><b>Checklist</b><small>Track work to do</small></span></button>
-      <button onMouseDown={(e) => { e.preventDefault(); runSlash(() => editor.chain().focus().toggleBlockquote().run()); }}><Quote size={16} /><span><b>Quote</b><small>Emphasize a passage</small></span></button>
-      <button onMouseDown={(e) => { e.preventDefault(); runSlash(() => editor.chain().focus().toggleCodeBlock().run()); }}><Code size={16} /><span><b>Code</b><small>Fenced code block</small></span></button>
-      <button onMouseDown={(e) => { e.preventDefault(); runSlash(() => editor.chain().focus().setHorizontalRule().run()); }}><Minus size={16} /><span><b>Divider</b><small>Separate sections</small></span></button>
-      <button onMouseDown={(e) => { e.preventDefault(); runSlash(() => editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()); }}><Table2 size={16} /><span><b>Table</b><small>Three by three table</small></span></button>
-      <button onMouseDown={(e) => { e.preventDefault(); removeSlash(); imageInput.current?.click(); }}><ImagePlus size={16} /><span><b>Image</b><small>Choose an image</small></span></button>
-      <button className="page-command" onMouseDown={(e) => { e.preventDefault(); openPageTitle(); }}><FilePlus2 size={16} /><span><b>Page</b><small>Create a named child page</small></span></button>
+      <div className="slash-title">{slashQuery ? `Commands matching /${slashQuery}` : 'Add a block or page'}<small>↑↓ navigate · Enter select</small></div>
+      {filteredSlashCommands.map((command, index) => <button
+        key={command.id}
+        className={`${command.id === 'page' ? 'page-command ' : ''}${index === slashSelected ? 'selected' : ''}`}
+        role="menuitem"
+        aria-selected={index === slashSelected}
+        onMouseEnter={() => { slashSelectedRef.current = index; setSlashSelected(index); }}
+        onMouseDown={(event) => { event.preventDefault(); command.run(); }}
+      >{command.icon}<span><b>{command.label}</b><small>{command.detail}</small></span></button>)}
+      {!filteredSlashCommands.length && <div className="slash-empty">No command matches “/{slashQuery}”</div>}
     </div>}
     <EditorContent editor={editor} />
     {pageTitleOpen && <div className="modal-backdrop page-title-backdrop" onMouseDown={() => { if (!pageCreating) { setPageTitleOpen(false); editor.commands.focus(); } }}><form className="create-dialog page-title-dialog" role="dialog" aria-modal="true" onSubmit={(event) => void addLinkedPage(event)} onMouseDown={(event) => event.stopPropagation()}>

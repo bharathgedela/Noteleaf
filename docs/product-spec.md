@@ -10,6 +10,10 @@ Notebook and section overflow menus expose creation and permanent deletion. Dele
 
 Pasted and uploaded images are selectable editor nodes. Selecting an image reveals resize handles on its left and right edges and corners; dragging a handle changes the image width while preserving its aspect ratio. The responsive width is stored with the note and represented in its generated Markdown so Edit and Read modes remain consistent.
 
+Slash commands are keyboard-first. Typing `/` opens a searchable command menu; continuing with a command name filters it, arrow keys change the selection, and Enter or Tab runs it. `/page` opens the child-page naming dialog immediately, while commands such as `/code`, `/divider`, `/image`, `/table`, headings, and lists insert their blocks directly.
+
+Code blocks support explicit link marks in Edit mode. HTTP and HTTPS URLs inside code blocks are also detected and clickable in Read mode, where they open through the operating system browser.
+
 Direct cloud accounts, live multi-device editing, collaboration, AI, databases, canvases, and other generalized productivity features are intentionally excluded. Disaster recovery is included through portable `.notesbackup` archives. Users can place these archives in OneDrive or Google Drive desktop-synced folders without giving Notes cloud credentials.
 
 ## Backup and recovery

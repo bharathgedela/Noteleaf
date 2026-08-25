@@ -10,6 +10,33 @@ function splitFrontmatter(source: string): { frontmatter?: string; body: string 
   return match ? { frontmatter: match[1], body: source.slice(match[0].length) } : { body: source };
 }
 
+function linkifyCodeHtml(html: string): string {
+  const parsed = new DOMParser().parseFromString(html, 'text/html');
+  const walker = parsed.createTreeWalker(parsed.body, NodeFilter.SHOW_TEXT);
+  const textNodes: Text[] = [];
+  while (walker.nextNode()) textNodes.push(walker.currentNode as Text);
+  for (const textNode of textNodes) {
+    if (textNode.parentElement?.closest('a')) continue;
+    const value = textNode.nodeValue || '';
+    const matches = [...value.matchAll(/https?:\/\/[^\s<>"']+/gi)];
+    if (!matches.length) continue;
+    const fragment = parsed.createDocumentFragment();
+    let offset = 0;
+    for (const match of matches) {
+      const index = match.index || 0;
+      if (index > offset) fragment.append(value.slice(offset, index));
+      const anchor = parsed.createElement('a');
+      anchor.href = match[0];
+      anchor.textContent = match[0];
+      fragment.append(anchor);
+      offset = index + match[0].length;
+    }
+    if (offset < value.length) fragment.append(value.slice(offset));
+    textNode.replaceWith(fragment);
+  }
+  return parsed.body.innerHTML;
+}
+
 function CodeBlock({ code, language, dark }: { code: string; language: string; dark: boolean }) {
   const [html, setHtml] = useState('');
   const [copied, setCopied] = useState(false);
@@ -20,14 +47,18 @@ function CodeBlock({ code, language, dark }: { code: string; language: string; d
       lang: normalized,
       theme: dark ? 'github-dark-default' : 'github-light-default',
     }).catch(() => codeToHtml(code.replace(/\n$/, ''), { lang: 'text', theme: dark ? 'github-dark-default' : 'github-light-default' }))
-      .then((value) => { if (live) setHtml(value); });
+      .then((value) => { if (live) setHtml(linkifyCodeHtml(value)); });
     return () => { live = false; };
   }, [code, normalized, dark]);
   const copy = async () => {
     await navigator.clipboard.writeText(code.replace(/\n$/, ''));
     setCopied(true); window.setTimeout(() => setCopied(false), 1400);
   };
-  return <div className="code-block">
+  return <div className="code-block" onClick={(event) => {
+    const anchor = (event.target as HTMLElement).closest('a');
+    const href = anchor?.getAttribute('href') || '';
+    if (/^https?:\/\//i.test(href)) { event.preventDefault(); void window.notes.system.openExternal(href); }
+  }}>
     <div className="code-header"><span>{normalized === 'text' ? 'Plain text' : normalized}</span><button onClick={copy}>{copied ? <Check size={14} /> : <Copy size={14} />}{copied ? 'Copied' : 'Copy'}</button></div>
     {html ? <div className="shiki-wrap" dangerouslySetInnerHTML={{ __html: html }} /> : <pre><code>{code}</code></pre>}
   </div>;
