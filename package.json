@@ -1,0 +1,114 @@
+{
+  "name": "notes-desktop",
+  "version": "0.3.4",
+  "private": true,
+  "description": "A calm, local-first Windows notebook and Markdown reader.",
+  "type": "module",
+  "main": "dist/main/index.js",
+  "scripts": {
+    "dev": "concurrently -k \"vite --host 127.0.0.1\" \"tsc -p tsconfig.main.json --watch --preserveWatchOutput\" \"wait-on tcp:5173 file:dist/main/index.js && cross-env VITE_DEV_SERVER_URL=http://127.0.0.1:5173 electron .\"",
+    "build": "npm run clean && tsc -p tsconfig.main.json && vite build",
+    "clean": "rimraf dist release coverage",
+    "typecheck": "tsc -p tsconfig.main.json --noEmit && tsc -p tsconfig.renderer.json --noEmit",
+    "lint": "eslint . --max-warnings=0",
+    "test": "node scripts/run-tests.mjs",
+    "test:watch": "vitest --config vitest.config.ts",
+    "start": "electron .",
+    "postinstall": "electron-rebuild -f -w better-sqlite3",
+    "dist:win": "npm run build && electron-builder --win nsis --x64"
+  },
+  "dependencies": {
+    "@tiptap/extension-image": "^3.4.2",
+    "@tiptap/extension-link": "^3.4.2",
+    "@tiptap/extension-placeholder": "^3.4.2",
+    "@tiptap/extension-table": "^3.4.2",
+    "@tiptap/extension-table-cell": "^3.4.2",
+    "@tiptap/extension-table-header": "^3.4.2",
+    "@tiptap/extension-table-row": "^3.4.2",
+    "@tiptap/extension-task-item": "^3.4.2",
+    "@tiptap/extension-task-list": "^3.4.2",
+    "@tiptap/pm": "^3.4.2",
+    "@tiptap/react": "^3.4.2",
+    "@tiptap/starter-kit": "^3.4.2",
+    "better-sqlite3": "^12.2.0",
+    "clsx": "^2.1.1",
+    "gray-matter": "^4.0.3",
+    "lucide-react": "^0.468.0",
+    "marked": "^16.2.1",
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-markdown": "^10.1.0",
+    "rehype-sanitize": "^6.0.0",
+    "remark-gfm": "^4.0.1",
+    "shiki": "^3.12.2",
+    "sanitize-html": "^2.17.0",
+    "turndown": "^7.2.0",
+    "turndown-plugin-gfm": "^1.0.2",
+    "zustand": "^5.0.8"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.34.0",
+    "@testing-library/jest-dom": "^6.8.0",
+    "@testing-library/react": "^16.3.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^22.17.2",
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
+    "@types/sanitize-html": "^2.16.0",
+    "@types/turndown": "^5.0.5",
+    "@vitejs/plugin-react": "^5.0.2",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.0.0",
+    "electron": "^37.4.0",
+    "electron-builder": "^26.0.12",
+    "eslint": "^9.34.0",
+    "eslint-plugin-react-hooks": "^5.2.0",
+    "eslint-plugin-react-refresh": "^0.4.20",
+    "jsdom": "^26.1.0",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.41.0",
+    "vite": "^7.1.3",
+    "vitest": "^3.2.4",
+    "wait-on": "^8.0.4"
+  },
+  "build": {
+    "appId": "com.local.notes",
+    "productName": "Notes",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "node_modules/better-sqlite3/**/*"
+    ],
+    "win": {
+      "icon": "assets/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "artifactName": "Notes-${version}-Setup.${ext}",
+      "fileAssociations": [
+        {
+          "ext": "md",
+          "name": "Markdown document",
+          "description": "Markdown document",
+          "role": "Viewer"
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": false,
+      "createStartMenuShortcut": true,
+      "deleteAppDataOnUninstall": false
+    }
+  }
+}

@@ -1,0 +1,96 @@
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { mkdirSync, rmSync } from 'node:fs';
+import { join } from 'node:path';
+import { randomUUID } from 'node:crypto';
+import { NotesRepository } from './repository.js';
+
+describe('NotesRepository', () => {
+  let directory: string;
+  let repository: NotesRepository | undefined;
+
+  beforeEach(() => {
+    directory = join(process.cwd(), `.test-notes-${randomUUID()}`);
+    mkdirSync(directory, { recursive: true });
+    repository = new NotesRepository(join(directory, 'notes.db'));
+  });
+
+  afterEach(() => {
+    repository?.close();
+    rmSync(directory, { recursive: true, force: true });
+  });
+
+  it('runs migrations and seeds the rendering sample once', () => {
+    const navigation = repository!.navigation();
+    expect(navigation.notebooks[0]?.name).toBe('Work');
+    expect(navigation.notebooks[0]?.sections[0]?.pages[0]?.title).toBe('AWS Ingestion Control Table');
+    const migration = repository!.db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get() as { version: number };
+    expect(migration.version).toBe(2);
+  });
+
+  it('supports notebook, section, and page CRUD with autosave content', () => {
+    const notebook = repository!.createNotebook('Personal');
+    const section = repository!.createSection(notebook.id, 'Ideas');
+    repository!.renameNotebook(notebook.id, 'Personal notes');
+    repository!.renameSection(section.id, 'Product ideas');
+    const renamedNotebook = repository!.navigation().notebooks.find((item) => item.id === notebook.id);
+    expect(renamedNotebook?.name).toBe('Personal notes');
+    expect(renamedNotebook?.sections[0]?.name).toBe('Product ideas');
+    const created = repository!.createPage(section.id, 'App idea');
+    const saved = repository!.savePage(created.id, {
+      title: 'Calm notes app',
+      contentHtml: '<h2>Fast</h2><p>Local first.</p>',
+      contentMarkdown: '## Fast\n\nLocal first.',
+    });
+    expect(saved.title).toBe('Calm notes app');
+    expect(repository!.getPage(created.id).contentMarkdown).toContain('Local first');
+    repository!.renamePage(created.id, 'Renamed');
+    expect(repository!.getPage(created.id).title).toBe('Renamed');
+    repository!.removeSection(section.id);
+    expect(() => repository!.getPage(created.id)).toThrow('Page not found');
+  });
+
+  it('indexes saved content with FTS5 and excludes trashed pages', () => {
+    const seededSection = repository!.navigation().notebooks[0].sections[0];
+    const created = repository!.createPage(seededSection.id, 'Glue pipeline');
+    repository!.savePage(created.id, { title: 'Glue pipeline', contentHtml: '<p>incremental ingestion control</p>', contentMarkdown: 'incremental ingestion control' });
+    expect(repository!.fullSearch('incremental ingestion')).toEqual(expect.arrayContaining([expect.objectContaining({ id: created.id })]));
+    repository!.trashPage(created.id);
+    expect(repository!.fullSearch('incremental ingestion').some((item) => item.id === created.id)).toBe(false);
+    repository!.restorePage(created.id);
+    expect(repository!.fullSearch('incremental ingestion').some((item) => item.id === created.id)).toBe(true);
+  });
+
+  it('moves pages, toggles favorites, and permanently removes trash', () => {
+    const notebook = repository!.createNotebook('Move target');
+    const section = repository!.createSection(notebook.id, 'Destination');
+    const sourcePage = repository!.navigation().notebooks[0].sections[0].pages[0];
+    repository!.movePage(sourcePage.id, section.id, 0);
+    expect(repository!.getPage(sourcePage.id).sectionId).toBe(section.id);
+    repository!.toggleFavorite(sourcePage.id);
+    expect(repository!.navigation().favorites.some((item) => item.id === sourcePage.id)).toBe(true);
+    repository!.trashPage(sourcePage.id);
+    repository!.removePage(sourcePage.id);
+    expect(() => repository!.getPage(sourcePage.id)).toThrow();
+  });
+
+  it('keeps inline child pages out of sidebar navigation and recents', () => {
+    const section = repository!.navigation().notebooks[0].sections[0];
+    const parent = section.pages[0];
+    const child = repository!.createPage(section.id, 'Inline child', { sidebarVisible: false, parentPageId: parent.id });
+    expect(child).toMatchObject({ isSidebarVisible: false, parentPageId: parent.id });
+    expect(repository!.navigation().notebooks[0].sections[0].pages.some((item) => item.id === child.id)).toBe(false);
+    expect(repository!.navigation().recent.some((item) => item.id === child.id)).toBe(false);
+    expect(repository!.getPage(child.id).title).toBe('Inline child');
+  });
+
+  it('persists settings, recent file modes, and external recovery drafts', () => {
+    expect(repository!.getSettings().theme).toBe('light');
+    expect(repository!.updateSettings({ theme: 'dark', lineWidth: 920 })).toMatchObject({ theme: 'dark', lineWidth: 920 });
+    repository!.rememberFile('C:\\notes\\architecture.md', 'architecture.md', 'split');
+    expect(repository!.recentFiles()[0]).toMatchObject({ filename: 'architecture.md', viewMode: 'split' });
+    repository!.saveDraft('C:\\notes\\architecture.md', '# Recovered');
+    expect(repository!.getDraft('C:\\notes\\architecture.md')).toBe('# Recovered');
+    repository!.clearDraft('C:\\notes\\architecture.md');
+    expect(repository!.getDraft('C:\\notes\\architecture.md')).toBeUndefined();
+  });
+});
