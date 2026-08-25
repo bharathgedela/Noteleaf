@@ -1,6 +1,6 @@
 # Product specification
 
-The V1 product is a calm Windows notebook and Markdown reader/editor. Its primary layout is a compact hierarchical sidebar plus a readable document surface. The app supports notebooks, sections, pages, soft deletion, favorites, recents, autosave, global search, and external Markdown in Preview, Edit, and Split modes.
+The V1 product is a calm macOS and Windows notebook and Markdown reader/editor. Its primary layout is a compact hierarchical sidebar plus a readable document surface. The app supports notebooks, sections, pages, soft deletion, favorites, recents, autosave, global search, and external Markdown in Preview, Edit, and Split modes.
 
 The visual system prioritizes Segoe UI typography, whitespace, a restrained neutral palette, an 880px reading column, strong Markdown rhythm, and clearly separated code blocks. Light mode is primary; dark and system themes remain tasteful and low contrast.
 

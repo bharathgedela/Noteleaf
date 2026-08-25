@@ -2,7 +2,8 @@
   "name": "notes-desktop",
   "version": "0.3.5",
   "private": true,
-  "description": "A calm, local-first Windows notebook and Markdown reader.",
+  "author": "Bharath Kumar Gedela",
+  "description": "A calm, local-first notebook and Markdown reader for macOS and Windows.",
   "type": "module",
   "main": "dist/main/index.js",
   "scripts": {
@@ -15,6 +16,8 @@
     "test:watch": "vitest --config vitest.config.ts",
     "start": "electron .",
     "postinstall": "electron-rebuild -f -w better-sqlite3",
+    "dist:mac": "npm run build && electron-builder --mac dmg zip --arm64",
+    "dist:mac:x64": "npm run build && electron-builder --mac dmg zip --x64",
     "dist:win": "npm run build && electron-builder --win nsis --x64"
   },
   "dependencies": {
@@ -86,6 +89,19 @@
     "asarUnpack": [
       "node_modules/better-sqlite3/**/*"
     ],
+    "fileAssociations": [
+      {
+        "ext": ["md", "markdown", "mdown", "mkd"],
+        "name": "Markdown document",
+        "description": "Markdown document",
+        "role": "Editor"
+      }
+    ],
+    "mac": {
+      "icon": "assets/icon-mac.png",
+      "category": "public.app-category.productivity",
+      "artifactName": "Notes-${version}-${arch}.${ext}"
+    },
     "win": {
       "icon": "assets/icon.ico",
       "target": [
@@ -94,15 +110,7 @@
           "arch": ["x64"]
         }
       ],
-      "artifactName": "Notes-${version}-Setup.${ext}",
-      "fileAssociations": [
-        {
-          "ext": "md",
-          "name": "Markdown document",
-          "description": "Markdown document",
-          "role": "Viewer"
-        }
-      ]
+      "artifactName": "Notes-${version}-Setup.${ext}"
     },
     "nsis": {
       "oneClick": false,

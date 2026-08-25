@@ -1,4 +1,5 @@
 import { app, BrowserWindow, Menu, protocol, net, dialog } from 'electron';
+import type { MenuItemConstructorOptions } from 'electron';
 import { join, relative, resolve } from 'node:path';
 import { pathToFileURL, fileURLToPath } from 'node:url';
 import { appendFileSync, mkdirSync } from 'node:fs';
@@ -42,25 +43,40 @@ async function dispatchExternal(path: string): Promise<void> {
 function sendCommand(command: string): void { window?.webContents.send('app-command', command); }
 
 function createMenu(): void {
-  Menu.setApplicationMenu(Menu.buildFromTemplate([
-    { label: 'File', submenu: [
-      { label: 'New Note', accelerator: 'CmdOrCtrl+N', click: () => sendCommand('new-note') },
-      { label: 'Open Markdown File…', accelerator: 'CmdOrCtrl+O', click: () => sendCommand('open-markdown') },
-      { label: 'Import Markdown as Note…', click: () => sendCommand('import-markdown') },
-      { type: 'separator' },
-      { label: 'Save', accelerator: 'CmdOrCtrl+S', click: () => sendCommand('save') },
-      { label: 'Save As…', accelerator: 'CmdOrCtrl+Shift+S', click: () => sendCommand('save-as') },
-      { type: 'separator' },
-      { label: 'Backup & Recovery…', click: () => sendCommand('backup-settings') },
-      { type: 'separator' }, { role: 'quit' },
-    ] },
+  const isMac = process.platform === 'darwin';
+  const fileMenu: MenuItemConstructorOptions[] = [
+    { label: 'New Note', accelerator: 'CmdOrCtrl+N', click: () => sendCommand('new-note') },
+    { label: 'Open Markdown File…', accelerator: 'CmdOrCtrl+O', click: () => sendCommand('open-markdown') },
+    { label: 'Import Markdown as Note…', click: () => sendCommand('import-markdown') },
+    { type: 'separator' },
+    { label: 'Save', accelerator: 'CmdOrCtrl+S', click: () => sendCommand('save') },
+    { label: 'Save As…', accelerator: 'CmdOrCtrl+Shift+S', click: () => sendCommand('save-as') },
+    { type: 'separator' },
+    { label: 'Backup & Recovery…', click: () => sendCommand('backup-settings') },
+  ];
+  if (!isMac) fileMenu.push({ type: 'separator' }, { role: 'quit' });
+
+  const template: MenuItemConstructorOptions[] = [
+    ...(isMac ? [{ label: APP_NAME, submenu: [
+      { role: 'about' as const },
+      { type: 'separator' as const },
+      { role: 'services' as const },
+      { type: 'separator' as const },
+      { role: 'hide' as const },
+      { role: 'hideOthers' as const },
+      { role: 'unhide' as const },
+      { type: 'separator' as const },
+      { role: 'quit' as const },
+    ] }] : []),
+    { label: 'File', submenu: fileMenu },
     { label: 'Edit', submenu: [
       { role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' },
       { type: 'separator' }, { label: 'Quick Open', accelerator: 'CmdOrCtrl+P', click: () => sendCommand('quick-open') },
     ] },
     { label: 'View', submenu: [{ role: 'reload' }, { role: 'toggleDevTools' }, { type: 'separator' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }] },
-    { label: 'Window', submenu: [{ role: 'minimize' }, { role: 'close' }] },
-  ]));
+    { label: 'Window', submenu: [{ role: 'minimize' }, ...(isMac ? [{ role: 'zoom' as const }] : []), { role: 'close' }] },
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
 async function createWindow(): Promise<void> {
@@ -116,7 +132,8 @@ else {
       return net.fetch(pathToFileURL(candidate).toString());
     });
     createMenu();
-    queuedPath = markdownArgument(process.argv.slice(1));
+    const startupPath = markdownArgument(process.argv.slice(1));
+    if (startupPath) queuedPath = startupPath;
     await createWindow();
     startupLog('Startup complete');
   }).catch((error: unknown) => {

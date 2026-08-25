@@ -5,4 +5,4 @@
 3. Build the sidebar, tabs, Tiptap editor, autosave status, and empty state.
 4. Build GFM preview and distinct Shiki code blocks, then external Markdown open/edit/split/save/recovery and internal import/export.
 5. Add FTS search, quick open, shortcuts, settings, themes, native menus, and filesystem launch handling.
-6. Test persistence, Markdown conversion, external file edge cases, recovery, search, migrations, production builds, and Windows packaging.
+6. Test persistence, Markdown conversion, external file edge cases, recovery, search, migrations, production builds, and macOS/Windows packaging.
