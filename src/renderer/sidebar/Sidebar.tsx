@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { ChevronDown, ChevronRight, FileText, MoreHorizontal, Plus, Search, Star, Trash2 } from 'lucide-react';
+import type { CSSProperties } from 'react';
+import { ChevronDown, ChevronRight, FileText, Folder, MoreHorizontal, Plus, Search, Star, Trash2 } from 'lucide-react';
 import type { NavigationData, NotebookTree, PageSummary, SectionTree } from '../../shared/types';
 
 interface SidebarProps {
@@ -16,6 +17,13 @@ interface SidebarProps {
   onPageMenu: (page: PageSummary, x: number, y: number) => void;
   onEmptyTrash: () => void;
   onDropPage: (pageId: string, sectionId: string) => void;
+}
+
+const NOTEBOOK_COLORS = ['#087f5b', '#2563eb', '#7c3aed', '#d97706', '#0891b2', '#db2777', '#16a34a', '#dc5a34'];
+
+function notebookStyle(id: string): CSSProperties {
+  const hash = [...id].reduce((value, character) => ((value * 31) + character.charCodeAt(0)) >>> 0, 7);
+  return { '--notebook-color': NOTEBOOK_COLORS[hash % NOTEBOOK_COLORS.length] } as CSSProperties;
 }
 
 function PageRow({ page, active, onOpen, onMenu }: { page: PageSummary; active: boolean; onOpen: () => void; onMenu: (x: number, y: number) => void }) {
@@ -46,10 +54,10 @@ export function Sidebar(props: SidebarProps) {
     <div className="sidebar-scroll">
       {props.data.favorites.length > 0 && <nav className="sidebar-group"><div className="group-label"><Star size={12} /> Favorites</div>{props.data.favorites.map((page) => <PageRow key={`fav-${page.id}`} page={page} active={props.activePageId === page.id} onOpen={() => props.onOpen(page)} onMenu={(x, y) => props.onPageMenu(page, x, y)} />)}</nav>}
       <nav className="tree" aria-label="Notebooks">
-        {props.data.notebooks.map((notebook) => <div className="notebook" key={notebook.id}>
+        {props.data.notebooks.map((notebook) => <div className="notebook" key={notebook.id} style={notebookStyle(notebook.id)}>
           <div className="notebook-row"><button className="disclosure" onClick={() => toggle(notebook.id)}>{collapsed.has(notebook.id) ? <ChevronRight size={14} /> : <ChevronDown size={14} />}</button><button className="notebook-name" data-nav-id={notebook.id} onClick={() => toggle(notebook.id)}>{notebook.name}</button><button className="row-action" title={`New section in ${notebook.name}`} aria-label={`New section in ${notebook.name}`} onClick={() => { expand(notebook.id); props.onNewSection(notebook.id); }}><Plus size={14} /></button><button className="row-action" title={`More options for ${notebook.name}`} aria-label={`More options for ${notebook.name}`} onClick={(event) => { event.stopPropagation(); const box = event.currentTarget.getBoundingClientRect(); props.onNotebookMenu(notebook, box.right, box.bottom); }}><MoreHorizontal size={14} /></button></div>
           {!collapsed.has(notebook.id) && notebook.sections.map((section) => <div className="section" key={section.id} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { const pageId = e.dataTransfer.getData('text/notes-page'); if (pageId) props.onDropPage(pageId, section.id); }}>
-            <div className="section-row"><button className="disclosure" onClick={() => toggle(section.id)}>{collapsed.has(section.id) ? <ChevronRight size={13} /> : <ChevronDown size={13} />}</button><button className="section-name" data-nav-id={section.id} onClick={() => toggle(section.id)}>{section.name}</button><button className="row-action" title={`New page in ${section.name}`} aria-label={`New page in ${section.name}`} onClick={() => { expand(section.id); props.onNewPage(section.id); }}><Plus size={13} /></button><button className="row-action" title={`More options for ${section.name}`} aria-label={`More options for ${section.name}`} onClick={(event) => { event.stopPropagation(); const box = event.currentTarget.getBoundingClientRect(); props.onSectionMenu(section, box.right, box.bottom); }}><MoreHorizontal size={13} /></button></div>
+            <div className="section-row"><button className="disclosure" onClick={() => toggle(section.id)}>{collapsed.has(section.id) ? <ChevronRight size={13} /> : <ChevronDown size={13} />}</button><button className="section-name" data-nav-id={section.id} onClick={() => toggle(section.id)}><Folder size={13} /><span>{section.name}</span></button><button className="row-action" title={`New page in ${section.name}`} aria-label={`New page in ${section.name}`} onClick={() => { expand(section.id); props.onNewPage(section.id); }}><Plus size={13} /></button><button className="row-action" title={`More options for ${section.name}`} aria-label={`More options for ${section.name}`} onClick={(event) => { event.stopPropagation(); const box = event.currentTarget.getBoundingClientRect(); props.onSectionMenu(section, box.right, box.bottom); }}><MoreHorizontal size={13} /></button></div>
             {!collapsed.has(section.id) && <div className="page-list">{section.pages.map((page) => <PageRow key={page.id} page={page} active={props.activePageId === page.id} onOpen={() => props.onOpen(page)} onMenu={(x, y) => props.onPageMenu(page, x, y)} />)}</div>}
           </div>)}
         </div>)}
