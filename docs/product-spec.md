@@ -14,6 +14,8 @@ Slash commands are keyboard-first. Typing `/` opens a searchable command menu; c
 
 Code blocks support explicit link marks in Edit mode. HTTP and HTTPS URLs inside code blocks are also detected and clickable in Read mode, where they open through the operating system browser.
 
+Markdown documents opened from disk support links to other Markdown files. Relative paths are resolved from the current document's folder, URL-encoded filenames and heading fragments are accepted, and the target opens or activates as another tab inside Notes. Missing, moved, non-Markdown, and unsupported links show a clear error instead of opening an unsafe path.
+
 Direct cloud accounts, live multi-device editing, collaboration, AI, databases, canvases, and other generalized productivity features are intentionally excluded. Disaster recovery is included through portable `.notesbackup` archives. Users can place these archives in OneDrive or Google Drive desktop-synced folders without giving Notes cloud credentials.
 
 ## Backup and recovery

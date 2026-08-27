@@ -127,6 +127,7 @@ export interface NotesApi {
   };
   files: {
     openMarkdown(path?: string): Promise<ExternalDocument | null>;
+    openLinkedMarkdown(sourcePath: string, href: string): Promise<ExternalDocument>;
     saveMarkdown(path: string, content: string, viewMode: MarkdownViewMode): Promise<ExternalDocument>;
     saveMarkdownAs(content: string, suggestedName?: string): Promise<ExternalDocument | null>;
     persistDraft(path: string, content: string): Promise<void>;

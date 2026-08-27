@@ -64,7 +64,7 @@ function CodeBlock({ code, language, dark }: { code: string; language: string; d
   </div>;
 }
 
-export function MarkdownPreview({ source, className = '', onOpenPage }: { source: string; className?: string; onOpenPage?: (pageId: string) => void }) {
+export function MarkdownPreview({ source, className = '', onOpenPage, onOpenDocument }: { source: string; className?: string; onOpenPage?: (pageId: string) => void; onOpenDocument?: (href: string) => void }) {
   const { frontmatter, body } = useMemo(() => splitFrontmatter(source), [source]);
   const dark = document.documentElement.dataset.theme === 'dark';
   return <article className={`markdown-body ${className}`}>
@@ -85,6 +85,7 @@ export function MarkdownPreview({ source, className = '', onOpenPage }: { source
           const pageMatch = /^notes:\/\/page\/([\w-]+)$/i.exec(href);
           if (pageMatch && onOpenPage) onOpenPage(pageMatch[1]);
           else if (/^https?:\/\//i.test(href)) void window.notes.system.openExternal(href);
+          else if (href && !href.startsWith('#') && onOpenDocument) onOpenDocument(href);
         }}>{children}</a>,
         img: ({ src = '', alt = '' }) => {
           const value = String(src);

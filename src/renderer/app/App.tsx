@@ -77,7 +77,7 @@ function InternalDocument({ pageId, settings, onTitle, onSaved, onOpenPage, onSt
   </main>;
 }
 
-function ExternalDocumentView({ initial, onDocumentChange }: { initial: ExternalDocument; onDocumentChange: (doc: ExternalDocument) => void }) {
+function ExternalDocumentView({ initial, onDocumentChange, onOpenLinkedDocument }: { initial: ExternalDocument; onDocumentChange: (doc: ExternalDocument) => void; onOpenLinkedDocument: (sourcePath: string, href: string) => void }) {
   const [document, setDocument] = useState(initial);
   const [source, setSource] = useState(initial.recoveryContent || initial.content);
   const [dirty, setDirty] = useState(Boolean(initial.recoveryContent && initial.recoveryContent !== initial.content));
@@ -108,9 +108,9 @@ function ExternalDocumentView({ initial, onDocumentChange }: { initial: External
   return <main className="document-view external-view">
     <header className="external-header"><div><h1>{document.filename}{dirty && <i> •</i>}</h1><p title={document.path}>{document.path}</p></div><div className="mode-switch"><button className={document.viewMode === 'preview' ? 'active' : ''} onClick={() => setMode('preview')}>Preview</button><button className={document.viewMode === 'edit' ? 'active' : ''} onClick={() => setMode('edit')}>Edit</button><button className={document.viewMode === 'split' ? 'active' : ''} onClick={() => setMode('split')}>Split</button></div></header>
     {initial.recoveryContent && initial.recoveryContent !== initial.content && <div className="recovery-banner">Recovered unsaved changes from your last editing session. <button onClick={() => { setSource(initial.content); setDirty(false); void window.notes.files.clearDraft(document.path); onDocumentChange({ ...document, isDirty: false }); }}>Discard recovery</button></div>}
-    {document.viewMode === 'preview' && <div className="external-preview"><MarkdownPreview source={source} /></div>}
+    {document.viewMode === 'preview' && <div className="external-preview"><MarkdownPreview source={source} onOpenDocument={(href) => onOpenLinkedDocument(document.path, href)} /></div>}
     {document.viewMode === 'edit' && <textarea className="markdown-source single" aria-label="Markdown source" value={source} onChange={(e) => editSource(e.target.value)} spellCheck={false} />}
-    {document.viewMode === 'split' && <div className="split-view"><textarea className="markdown-source" aria-label="Markdown source" value={source} onChange={(e) => editSource(e.target.value)} spellCheck={false} /><div className="split-preview"><MarkdownPreview source={source} /></div></div>}
+    {document.viewMode === 'split' && <div className="split-view"><textarea className="markdown-source" aria-label="Markdown source" value={source} onChange={(e) => editSource(e.target.value)} spellCheck={false} /><div className="split-preview"><MarkdownPreview source={source} onOpenDocument={(href) => onOpenLinkedDocument(document.path, href)} /></div></div>}
     {(dirty || saving) && <div className="external-save-status">{saving ? 'Saving…' : 'Unsaved changes · Ctrl+S'}</div>}
   </main>;
 }
@@ -238,6 +238,14 @@ export function App() {
     setTabs((before) => { const found = before.findIndex((tab) => tab.key === key); if (found >= 0) return before.map((tab) => tab.key === key ? { kind: 'external', key, document } : tab); return [...before, { kind: 'external', key, document }]; });
     setActiveKey(key);
   }, []);
+  const openLinkedMarkdown = useCallback(async (sourcePath: string, href: string) => {
+    try {
+      openExternal(await window.notes.files.openLinkedMarkdown(sourcePath, href));
+    } catch (error) {
+      const detail = error instanceof Error ? error.message.replace(/^Error invoking remote method '[^']+': /, '') : 'The file may have been moved or renamed.';
+      window.alert(`Could not open the linked Markdown file.\n\n${detail}`);
+    }
+  }, [openExternal]);
   useEffect(() => window.notes.events.onOpenExternal(openExternal), [openExternal]);
   const active = tabs.find((tab) => tab.key === activeKey);
   const canGoBack = active?.kind === 'internal' && active.historyIndex > 0;
@@ -322,7 +330,7 @@ export function App() {
       <header className="topbar"><button className="sidebar-toggle" onClick={() => setSidebarOpen(!sidebarOpen)} title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}>{sidebarOpen ? <PanelLeftClose size={17} /> : <PanelLeftOpen size={17} />}</button><div className="history-buttons"><button disabled={!canGoBack} title="Back" aria-label="Back" onClick={() => void movePageHistory(-1)}><ArrowLeft size={16} /></button><button disabled={!canGoForward} title="Forward" aria-label="Forward" onClick={() => void movePageHistory(1)}><ArrowRight size={16} /></button></div><div className="tabs">{tabs.map((tab) => <button key={tab.key} className={`tab ${tab.key === activeKey ? 'active' : ''}`} onClick={() => setActiveKey(tab.key)}><span>{tab.kind === 'internal' ? tab.title : `${tab.document.filename}${tab.document.isDirty ? '  •' : ''}`}</span><i onClick={(e) => { e.stopPropagation(); closeTab(tab.key); }}><X size={13} /></i></button>)}</div><button title="New note" onClick={() => void createPage()}><Plus size={17} /></button><button title="Settings" onClick={() => setSettingsOpen(true)}><SettingsIcon size={16} /></button></header>
       {!active && <div className="empty-state"><div className="empty-icon">N</div><h1>Welcome to Notes</h1><p>A quiet place for your ideas, technical notes, and Markdown documents.</p><div><button className="primary" onClick={() => void createPage()}><FilePlus2 size={17} />New note</button><button onClick={() => void openMarkdown()}><FolderOpen size={17} />Open Markdown</button></div></div>}
       {active?.kind === 'internal' && <InternalDocument key={active.pageId} pageId={active.pageId} settings={settings} onTitle={(title) => updateTabTitle(active.key, title)} onSaved={refresh} onOpenPage={(pageId) => void navigateInActiveTab(pageId)} onStructureChange={() => void refresh()} />}
-      {active?.kind === 'external' && <ExternalDocumentView key={active.document.path} initial={active.document} onDocumentChange={(doc) => updateExternalTab(active.key, doc)} />}
+      {active?.kind === 'external' && <ExternalDocumentView key={active.document.path} initial={active.document} onDocumentChange={(doc) => updateExternalTab(active.key, doc)} onOpenLinkedDocument={(sourcePath, href) => void openLinkedMarkdown(sourcePath, href)} />}
     </section>
     {searchOpen && <SearchPalette onClose={() => setSearchOpen(false)} onOpen={(id) => void openPageById(id)} />}
     {settingsOpen && <SettingsDialog settings={settings} onChange={setSettings} onClose={() => setSettingsOpen(false)} />}

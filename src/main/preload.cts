@@ -27,6 +27,7 @@ const api: NotesApi = {
   search: { full: (query) => invoke('search:full', query), quick: (query) => invoke('search:quick', query) },
   files: {
     openMarkdown: (path) => invoke('files:open', path),
+    openLinkedMarkdown: (sourcePath, href) => invoke('files:open-linked', sourcePath, href),
     saveMarkdown: (path, content, mode) => invoke('files:save', path, content, mode),
     saveMarkdownAs: (content, name) => invoke('files:save-as', content, name),
     persistDraft: (path, content) => invoke('files:draft', path, content),

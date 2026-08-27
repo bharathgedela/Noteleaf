@@ -6,6 +6,7 @@ import { marked } from 'marked';
 import sanitizeHtml from 'sanitize-html';
 import type { ExternalDocument, MarkdownViewMode, Page } from '../shared/types.js';
 import type { NotesRepository } from './database/repository.js';
+import { resolveMarkdownLink } from './markdown-links.js';
 
 const MAX_MARKDOWN_BYTES = 20 * 1024 * 1024;
 const MIME_EXTENSIONS: Record<string, string> = {
@@ -40,6 +41,14 @@ export class FileService {
       kind: 'external', path: selected, filename: basename(selected), content, viewMode,
       recoveryContent: this.repository.getDraft(selected), modifiedAt: info.mtime.toISOString(),
     };
+  }
+
+  async openLinkedMarkdown(sourcePath: string, href: string): Promise<ExternalDocument> {
+    const target = resolveMarkdownLink(sourcePath, href);
+    if (!target) throw new Error('The link does not point to a Markdown file');
+    const document = await this.openMarkdown(target);
+    if (!document) throw new Error('The linked Markdown file could not be opened');
+    return document;
   }
 
   async saveMarkdown(path: string, content: string, viewMode: MarkdownViewMode): Promise<ExternalDocument> {
