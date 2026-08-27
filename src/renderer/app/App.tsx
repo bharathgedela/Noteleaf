@@ -287,8 +287,30 @@ export function App() {
   }, [openExternal]);
   useEffect(() => window.notes.events.onOpenExternal(openExternal), [openExternal]);
   const active = tabs.find((tab) => tab.key === activeKey);
-  const canGoBack = active?.kind === 'internal' && active.historyIndex > 0;
-  const canGoForward = active?.kind === 'internal' && active.historyIndex < active.history.length - 1;
+  const activeTabIndex = tabs.findIndex((tab) => tab.key === activeKey);
+  const canGoBack = (active?.kind === 'internal' && active.historyIndex > 0) || activeTabIndex > 0;
+  const canGoForward = (active?.kind === 'internal' && active.historyIndex < active.history.length - 1) || (activeTabIndex >= 0 && activeTabIndex < tabs.length - 1);
+  const moveWorkspaceHistory = useCallback(async (direction: -1 | 1) => {
+    const current = tabs.find((tab) => tab.key === activeKey);
+    if (!current) return;
+    if (current.kind === 'internal' && current.history[current.historyIndex + direction]) {
+      await movePageHistory(direction);
+      return;
+    }
+    const currentIndex = tabs.findIndex((tab) => tab.key === current.key);
+    const adjacentTab = tabs[currentIndex + direction];
+    if (adjacentTab) setActiveKey(adjacentTab.key);
+  }, [activeKey, tabs, movePageHistory]);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>('.tabs .tab.active')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'nearest'
+      });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activeKey]);
   const firstSection = navigation.notebooks.flatMap((n) => n.sections)[0];
   const createPage = useCallback(async (sectionId?: string) => {
     let target = sectionId || firstSection?.id;
@@ -366,7 +388,7 @@ export function App() {
   return <div className="app" onClick={() => { setMenu(undefined); setStructureMenu(undefined); }}>
     {sidebarOpen && <Sidebar data={navigation} activePageId={activePageId} onOpen={(p) => void openPageById(p.id)} onSearch={() => setSearchOpen(true)} onNewNotebook={() => setCreateDialog({ kind: 'notebook' })} onNewSection={(notebookId) => setCreateDialog({ kind: 'section', notebookId })} onNewPage={(id) => void createPage(id)} onNotebookMenu={(item, x, y) => { setMenu(undefined); setStructureMenu({ kind: 'notebook', item, x, y }); }} onSectionMenu={(item, x, y) => { setMenu(undefined); setStructureMenu({ kind: 'section', item, x, y }); }} onPageMenu={(page, x, y) => { setStructureMenu(undefined); setMenu({ page, x, y }); }} onDropPage={async (pageId, sectionId) => { await window.notes.pages.move(pageId, sectionId, 0); await refresh(); }} />}
     <section className="workspace">
-      <header className="topbar"><button className="sidebar-toggle" onClick={() => setSidebarOpen(!sidebarOpen)} title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}>{sidebarOpen ? <PanelLeftClose size={17} /> : <PanelLeftOpen size={17} />}</button><div className="history-buttons"><button disabled={!canGoBack} title="Back" aria-label="Back" onClick={() => void movePageHistory(-1)}><ArrowLeft size={16} /></button><button disabled={!canGoForward} title="Forward" aria-label="Forward" onClick={() => void movePageHistory(1)}><ArrowRight size={16} /></button></div><div className="tabs">{tabs.map((tab) => <button key={tab.key} className={`tab ${tab.key === activeKey ? 'active' : ''}`} onClick={() => setActiveKey(tab.key)}><span>{tab.kind === 'internal' ? tab.title : `${tab.document.filename}${tab.document.isDirty ? '  •' : ''}`}</span><i onClick={(e) => { e.stopPropagation(); closeTab(tab.key); }}><X size={13} /></i></button>)}</div><button title="New note" onClick={() => void createPage()}><Plus size={17} /></button><button className={markdownExplorerOpen ? 'active' : ''} title="Markdown folder explorer" onClick={toggleMarkdownExplorer}><FolderTree size={16} /></button><button title="Settings" onClick={() => setSettingsOpen(true)}><SettingsIcon size={16} /></button></header>
+      <header className="topbar"><button className="sidebar-toggle" onClick={() => setSidebarOpen(!sidebarOpen)} title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}>{sidebarOpen ? <PanelLeftClose size={17} /> : <PanelLeftOpen size={17} />}</button><div className="history-buttons"><button disabled={!canGoBack} title="Previous page or tab" aria-label="Previous page or tab" onClick={() => void moveWorkspaceHistory(-1)}><ArrowLeft size={16} /></button><button disabled={!canGoForward} title="Next page or tab" aria-label="Next page or tab" onClick={() => void moveWorkspaceHistory(1)}><ArrowRight size={16} /></button></div><div className="tabs">{tabs.map((tab) => <button key={tab.key} className={`tab ${tab.key === activeKey ? 'active' : ''}`} onClick={() => setActiveKey(tab.key)}><span>{tab.kind === 'internal' ? tab.title : `${tab.document.filename}${tab.document.isDirty ? '  •' : ''}`}</span><i onClick={(e) => { e.stopPropagation(); closeTab(tab.key); }}><X size={13} /></i></button>)}</div><button title="New note" onClick={() => void createPage()}><Plus size={17} /></button><button className={markdownExplorerOpen ? 'active' : ''} title="Markdown folder explorer" onClick={toggleMarkdownExplorer}><FolderTree size={16} /></button><button title="Settings" onClick={() => setSettingsOpen(true)}><SettingsIcon size={16} /></button></header>
       {!active && <div className="empty-state"><div className="empty-icon">N</div><h1>Welcome to Notes</h1><p>A quiet place for your ideas, technical notes, and Markdown documents.</p><div><button className="primary" onClick={() => void createPage()}><FilePlus2 size={17} />New note</button><button onClick={() => void openMarkdown()}><FolderOpen size={17} />Open Markdown</button></div></div>}
       {active?.kind === 'internal' && <InternalDocument key={active.pageId} pageId={active.pageId} settings={settings} onTitle={(title) => updateTabTitle(active.key, title)} onSaved={refresh} onOpenPage={(pageId) => void navigateInActiveTab(pageId)} onStructureChange={() => void refresh()} />}
       {active?.kind === 'external' && <ExternalDocumentView key={active.document.path} initial={active.document} onDocumentChange={(doc) => updateExternalTab(active.key, doc)} onOpenLinkedDocument={(sourcePath, href) => void openLinkedMarkdown(sourcePath, href)} />}
