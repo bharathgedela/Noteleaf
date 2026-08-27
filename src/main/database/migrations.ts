@@ -100,6 +100,20 @@ const migrations: Migration[] = [
       CREATE INDEX pages_sidebar ON pages(section_id, sidebar_visible, is_deleted, position);
     `,
   },
+  {
+    version: 3,
+    sql: `
+      UPDATE settings
+      SET value = '"hourly"'
+      WHERE key = 'backupFrequency'
+        AND value = '"off"'
+        AND EXISTS (
+          SELECT 1 FROM settings
+          WHERE key = 'backupFolder'
+            AND value NOT IN ('""', 'null')
+        );
+    `,
+  },
 ];
 
 export function runMigrations(db: Database.Database): void {

@@ -138,7 +138,7 @@ export class BackupService {
     if (selection.canceled || !selection.filePaths[0]) return null;
     const folder = resolve(selection.filePaths[0]);
     await mkdir(folder, { recursive: true });
-    this.repository.updateSettings({ backupFolder: folder, lastBackupError: null });
+    this.repository.updateSettings({ backupFolder: folder, backupFrequency: 'hourly', lastBackupError: null });
     return this.status();
   }
 
@@ -181,7 +181,7 @@ export class BackupService {
   }
 
   async setSchedule(frequency: BackupFrequency, retention: number): Promise<BackupStatus> {
-    const safeFrequency: BackupFrequency = frequency === 'daily' || frequency === 'weekly' ? frequency : 'off';
+    const safeFrequency: BackupFrequency = frequency === 'hourly' || frequency === 'daily' || frequency === 'weekly' ? frequency : 'off';
     const safeRetention = Math.min(100, Math.max(1, Math.round(retention) || 10));
     this.repository.updateSettings({ backupFrequency: safeFrequency, backupRetention: safeRetention });
     const folder = this.repository.getSettings().backupFolder;
@@ -241,12 +241,12 @@ export class BackupService {
     const check = async () => {
       const settings = this.repository.getSettings();
       if (!settings.backupFolder || settings.backupFrequency === 'off' || this.running) return;
-      const interval = settings.backupFrequency === 'daily' ? 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000;
+      const interval = settings.backupFrequency === 'hourly' ? 60 * 60 * 1000 : settings.backupFrequency === 'daily' ? 24 * 60 * 60 * 1000 : 7 * 24 * 60 * 60 * 1000;
       const last = settings.lastBackupAt ? new Date(settings.lastBackupAt).getTime() : 0;
       if (!Number.isFinite(last) || Date.now() - last >= interval) await this.create().catch(() => undefined);
     };
     void check();
-    this.timer = setInterval(() => void check(), 30 * 60 * 1000);
+    this.timer = setInterval(() => void check(), 5 * 60 * 1000);
     this.timer.unref();
   }
 

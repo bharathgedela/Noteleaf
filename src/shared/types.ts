@@ -2,7 +2,7 @@ export type Id = string;
 export type ThemePreference = 'light' | 'dark' | 'system';
 export type MarkdownViewMode = 'preview' | 'edit' | 'split';
 export type SaveState = 'saved' | 'saving' | 'unsaved' | 'error';
-export type BackupFrequency = 'off' | 'daily' | 'weekly';
+export type BackupFrequency = 'off' | 'hourly' | 'daily' | 'weekly';
 
 export interface BackupInfo {
   path: string;

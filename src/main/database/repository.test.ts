@@ -24,7 +24,7 @@ describe('NotesRepository', () => {
     expect(navigation.notebooks[0]?.name).toBe('Work');
     expect(navigation.notebooks[0]?.sections[0]?.pages[0]?.title).toBe('AWS Ingestion Control Table');
     const migration = repository!.db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get() as { version: number };
-    expect(migration.version).toBe(2);
+    expect(migration.version).toBe(3);
   });
 
   it('supports notebook, section, and page CRUD with autosave content', () => {
@@ -100,6 +100,7 @@ describe('NotesRepository', () => {
 
   it('persists settings, recent file modes, and external recovery drafts', () => {
     expect(repository!.getSettings().theme).toBe('light');
+    expect(repository!.getSettings().backupFrequency).toBe('hourly');
     expect(repository!.updateSettings({ theme: 'dark', lineWidth: 920 })).toMatchObject({ theme: 'dark', lineWidth: 920 });
     repository!.rememberFile('C:\\notes\\architecture.md', 'architecture.md', 'split');
     expect(repository!.recentFiles()[0]).toMatchObject({ filename: 'architecture.md', viewMode: 'split' });

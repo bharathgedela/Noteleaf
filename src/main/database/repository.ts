@@ -21,7 +21,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   defaultMarkdownMode: 'preview',
   reopenPreviousSession: true,
   backupFolder: '',
-  backupFrequency: 'off',
+  backupFrequency: 'hourly',
   backupRetention: 10,
   lastBackupAt: null,
   lastBackupError: null,

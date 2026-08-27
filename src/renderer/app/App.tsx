@@ -1,15 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight, FilePlus2, FileText, Folder, FolderOpen, FolderTree, PanelLeftClose, PanelLeftOpen, Plus, RefreshCw, Settings as SettingsIcon, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, ChevronDown, ChevronRight, CloudUpload, FilePlus2, FileText, Folder, FolderOpen, FolderTree, List, LoaderCircle, Maximize2, Minimize2, PanelLeftClose, PanelLeftOpen, Plus, RefreshCw, Settings as SettingsIcon, X } from 'lucide-react';
 import type { AppSettings, BackupStatus, ExternalDocument, MarkdownFolderEntry, MarkdownFolderTree, NavigationData, NotebookTree, Page, PageSummary, SaveState, SearchResult, SectionTree } from '../../shared/types';
 import { Sidebar } from '../sidebar/Sidebar';
 import { RichEditor } from '../editor/RichEditor';
 import { MarkdownPreview } from '../markdown/MarkdownPreview';
 
 const EMPTY_NAV: NavigationData = { notebooks: [], favorites: [], recent: [], trash: [] };
-const DEFAULT_SETTINGS: AppSettings = { theme: 'light', editorFontSize: 16, codeFontSize: 14, lineWidth: 880, spellcheck: true, defaultMarkdownMode: 'preview', reopenPreviousSession: true, backupFolder: '', backupFrequency: 'off', backupRetention: 10, lastBackupAt: null, lastBackupError: null };
+const DEFAULT_SETTINGS: AppSettings = { theme: 'light', editorFontSize: 16, codeFontSize: 14, lineWidth: 880, spellcheck: true, defaultMarkdownMode: 'preview', reopenPreviousSession: true, backupFolder: '', backupFrequency: 'hourly', backupRetention: 10, lastBackupAt: null, lastBackupError: null };
 type Tab = { kind: 'internal'; key: string; pageId: string; title: string; history: string[]; historyIndex: number } | { kind: 'external'; key: string; document: ExternalDocument };
 type StructureMenu = { kind: 'notebook'; item: NotebookTree; x: number; y: number } | { kind: 'section'; item: SectionTree; x: number; y: number };
 type RenameDialogState = { kind: 'notebook' | 'section'; id: string; name: string };
+type ToastState = { id: number; message: string; tone: 'success' | 'info' | 'error' };
+
+function storedWidth(key: string, fallback: number): number {
+  const value = Number(window.localStorage.getItem(key));
+  return Number.isFinite(value) && value > 0 ? value : fallback;
+}
 
 function relativeTime(value: string): string {
   const seconds = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 1000));
@@ -33,7 +39,7 @@ function useReliableAutofocus(ref: React.RefObject<HTMLInputElement | null>): vo
   }, [ref]);
 }
 
-function InternalDocument({ pageId, settings, onTitle, onSaved, onOpenPage, onStructureChange }: { pageId: string; settings: AppSettings; onTitle: (title: string) => void; onSaved: () => void; onOpenPage: (pageId: string) => void; onStructureChange: () => void }) {
+function InternalDocument({ pageId, settings, breadcrumb, onRevealBreadcrumb, onTitle, onSaved, onOpenPage, onStructureChange }: { pageId: string; settings: AppSettings; breadcrumb?: { notebookId: string; notebook: string; sectionId: string; section: string }; onRevealBreadcrumb: (id: string) => void; onTitle: (title: string) => void; onSaved: () => void; onOpenPage: (pageId: string) => void; onStructureChange: () => void }) {
   const [page, setPage] = useState<Page | null>(null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState({ html: '<p></p>', markdown: '' });
@@ -68,6 +74,7 @@ function InternalDocument({ pageId, settings, onTitle, onSaved, onOpenPage, onSt
   return <main className="document-view">
     <div className="document-column">
       <header className="document-header">
+        {breadcrumb && <nav className="document-breadcrumb" aria-label="Page location"><button onClick={() => onRevealBreadcrumb(breadcrumb.notebookId)}>{breadcrumb.notebook}</button><ChevronRight size={12} /><button onClick={() => onRevealBreadcrumb(breadcrumb.sectionId)}>{breadcrumb.section}</button></nav>}
         <input className="title-input" value={title} aria-label="Note title" placeholder="Untitled" onChange={(e) => { setTitle(e.target.value); changed(); }} />
         <div className="document-meta"><span>Updated {relativeTime(page.updatedAt)}</span><span className={`save-state ${status}`}>{status === 'saved' ? 'Saved' : status === 'saving' ? 'Saving…' : status === 'error' ? 'Couldn’t save' : 'Unsaved'}</span></div>
         <div className="mode-switch compact"><button className={!reading ? 'active' : ''} onClick={() => setReading(false)}>Edit</button><button className={reading ? 'active' : ''} onClick={() => setReading(true)}>Read</button></div>
@@ -132,13 +139,17 @@ function MarkdownTreeItem({ entry, activePath, onOpen }: { entry: MarkdownFolder
   </div>;
 }
 
-function MarkdownFolderExplorer({ tree, activePath, onOpen, onChoose, onClose }: { tree: MarkdownFolderTree; activePath?: string; onOpen: (path: string) => void; onChoose: () => void; onClose: () => void }) {
-  return <aside className="markdown-explorer" aria-label="Markdown folder explorer">
+function MarkdownFolderExplorer({ tree, activePath, width, onOpen, onChoose, onClose }: { tree: MarkdownFolderTree; activePath?: string; width: number; onOpen: (path: string) => void; onChoose: () => void; onClose: () => void }) {
+  return <aside className="markdown-explorer" style={{ width, minWidth: width }} aria-label="Markdown folder explorer">
     <header><div><FolderTree size={16} /><strong>Markdown Explorer</strong></div><div><button title="Choose another folder" aria-label="Choose another folder" onClick={onChoose}><RefreshCw size={14} /></button><button title="Close explorer" aria-label="Close explorer" onClick={onClose}><X size={15} /></button></div></header>
     <div className="markdown-explorer-root" title={tree.path}><FolderOpen size={14} /><strong>{tree.name}</strong><small>{tree.fileCount}</small></div>
     <div className="markdown-explorer-tree">{tree.children.length ? tree.children.map((entry) => <MarkdownTreeItem key={entry.path} entry={entry} activePath={activePath} onOpen={onOpen} />) : <p>No Markdown files found in this folder.</p>}</div>
     {tree.truncated && <footer>Showing the first 5,000 Markdown files.</footer>}
   </aside>;
+}
+
+function ToastNotice({ toast, onClose }: { toast: ToastState; onClose: () => void }) {
+  return <div className={`toast-notice ${toast.tone}`} role="status"><span>{toast.tone === 'success' ? <CheckCircle2 size={16} /> : toast.tone === 'error' ? <X size={16} /> : <CloudUpload size={16} />}</span><p>{toast.message}</p><button aria-label="Dismiss notification" onClick={onClose}><X size={14} /></button></div>;
 }
 
 function SearchPalette({ onClose, onOpen }: { onClose: () => void; onOpen: (id: string) => void }) {
@@ -176,7 +187,7 @@ function SettingsDialog({ settings, onChange, onClose }: { settings: AppSettings
       <section className="backup-settings">
         <div className="settings-section-title"><div><h3>Backup &amp; recovery</h3><p>Save the complete Notes library and attachments to a synced or local folder.</p></div><span className={`provider-badge ${backup?.provider || 'none'}`}>{providerName}</span></div>
         <div className="backup-folder"><strong>{backup?.folder || 'Choose a OneDrive, Google Drive, or local folder'}</strong><div><button disabled={backupBusy} onClick={() => void runBackupAction(async () => { const selected = await window.notes.backup.chooseFolder(); if (selected) setBackup(selected); })}>{backup?.folder ? 'Change folder…' : 'Choose folder…'}</button>{backup?.folder && <button disabled={backupBusy} onClick={() => void runBackupAction(() => window.notes.backup.openFolder())}>Open folder</button>}</div></div>
-        <div className="setting-row backup-row"><label>Automatic backup<small>Runs while Notes is open when the interval is due.</small></label><select disabled={!backup?.folder || backupBusy} value={backup?.frequency || 'off'} onChange={(e) => void runBackupAction(async () => { setBackup(await window.notes.backup.setSchedule(e.target.value as BackupStatus['frequency'], backup?.retention || 10)); })}><option value="off">Off</option><option value="daily">Daily</option><option value="weekly">Weekly</option></select></div>
+        <div className="setting-row backup-row"><label>Automatic backup<small>Hourly by default while Notes is open.</small></label><select disabled={!backup?.folder || backupBusy} value={backup?.frequency || 'hourly'} onChange={(e) => void runBackupAction(async () => { setBackup(await window.notes.backup.setSchedule(e.target.value as BackupStatus['frequency'], backup?.retention || 10)); })}><option value="hourly">Every hour</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="off">Off</option></select></div>
         <div className="setting-row backup-row"><label>Keep backups<small>Older automatic backups are removed from this folder.</small></label><select disabled={!backup?.folder || backupBusy} value={backup?.retention || 10} onChange={(e) => void runBackupAction(async () => { setBackup(await window.notes.backup.setSchedule(backup?.frequency || 'off', Number(e.target.value))); })}><option value="5">5 backups</option><option value="10">10 backups</option><option value="20">20 backups</option><option value="50">50 backups</option></select></div>
         <div className="backup-actions"><button className="primary" disabled={!backup?.folder || backupBusy} onClick={() => void runBackupAction(async () => { const created = await window.notes.backup.create(); setBackupMessage(`Backup created: ${created.filename}`); })}>{backupBusy ? 'Working…' : 'Back up now'}</button><button disabled={backupBusy} onClick={() => void runBackupAction(async () => { await window.notes.backup.restore(); })}>Restore backup…</button></div>
         {backupMessage && <p className="backup-message">{backupMessage}</p>}
@@ -214,8 +225,15 @@ export function App() {
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [activeKey, setActiveKey] = useState<string>();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarWidth, setSidebarWidth] = useState(() => storedWidth('notes.sidebarWidth', 260));
+  const [explorerWidth, setExplorerWidth] = useState(() => storedWidth('notes.explorerWidth', 300));
+  const [focusMode, setFocusMode] = useState(false);
+  const [tabsMenuOpen, setTabsMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [backupStatus, setBackupStatus] = useState<BackupStatus>();
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [toast, setToast] = useState<ToastState>();
   const [markdownFolder, setMarkdownFolder] = useState<MarkdownFolderTree>();
   const [markdownExplorerOpen, setMarkdownExplorerOpen] = useState(false);
   const [createDialog, setCreateDialog] = useState<{ kind: 'notebook' } | { kind: 'section'; notebookId: string }>();
@@ -224,6 +242,20 @@ export function App() {
   const [structureMenu, setStructureMenu] = useState<StructureMenu>();
   const refresh = useCallback(async () => setNavigation(await window.notes.navigation.list()), []);
   useEffect(() => { void Promise.all([refresh(), window.notes.settings.get().then(setSettings)]); }, [refresh]);
+  useEffect(() => { window.localStorage.setItem('notes.sidebarWidth', String(sidebarWidth)); }, [sidebarWidth]);
+  useEffect(() => { window.localStorage.setItem('notes.explorerWidth', String(explorerWidth)); }, [explorerWidth]);
+  useEffect(() => {
+    const update = () => void window.notes.backup.status().then(setBackupStatus);
+    update();
+    const timer = window.setInterval(update, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  useEffect(() => {
+    if (!toast) return;
+    const timer = window.setTimeout(() => setToast((current) => current?.id === toast.id ? undefined : current), 4200);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+  const notify = useCallback((message: string, tone: ToastState['tone'] = 'info') => setToast({ id: Date.now(), message, tone }), []);
   const actualTheme = settings.theme === 'system' ? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : settings.theme;
   useEffect(() => { document.documentElement.dataset.theme = actualTheme; document.documentElement.style.setProperty('--content-width', `${settings.lineWidth}px`); document.documentElement.style.setProperty('--editor-size', `${settings.editorFontSize}px`); document.documentElement.style.setProperty('--code-size', `${settings.codeFontSize}px`); }, [actualTheme, settings]);
   const openPageById = useCallback(async (pageId: string) => {
@@ -273,6 +305,44 @@ export function App() {
   const toggleMarkdownExplorer = useCallback(() => {
     if (!markdownFolder) void chooseMarkdownFolder(); else setMarkdownExplorerOpen((value) => !value);
   }, [markdownFolder, chooseMarkdownFolder]);
+  const startPanelResize = (event: React.PointerEvent, panel: 'sidebar' | 'explorer') => {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = panel === 'sidebar' ? sidebarWidth : explorerWidth;
+    document.body.classList.add('panel-resizing');
+    const move = (moveEvent: PointerEvent) => {
+      const delta = (moveEvent.clientX - startX) * (panel === 'sidebar' ? 1 : -1);
+      const next = Math.min(panel === 'sidebar' ? 420 : 520, Math.max(panel === 'sidebar' ? 210 : 240, startWidth + delta));
+      if (panel === 'sidebar') setSidebarWidth(next); else setExplorerWidth(next);
+    };
+    const finish = () => {
+      document.body.classList.remove('panel-resizing');
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', finish);
+      window.removeEventListener('pointercancel', finish);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', finish);
+    window.addEventListener('pointercancel', finish);
+  };
+  const quickBackup = useCallback(async () => {
+    if (backupBusy) return;
+    const status = backupStatus || await window.notes.backup.status();
+    if (!status.folder) {
+      setSettingsOpen(true);
+      notify('Choose a OneDrive, Google Drive, or local backup folder first.');
+      return;
+    }
+    setBackupBusy(true);
+    try {
+      const created = await window.notes.backup.create();
+      setBackupStatus(await window.notes.backup.status());
+      notify(`Backup saved: ${created.filename}`, 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message.replace(/^Error invoking remote method '[^']+': Error: /, '') : 'Backup failed.';
+      notify(message, 'error');
+    } finally { setBackupBusy(false); }
+  }, [backupBusy, backupStatus, notify]);
   const openExplorerFile = useCallback(async (path: string) => {
     try { const document = await window.notes.files.openMarkdown(path); if (document) openExternal(document); }
     catch { window.alert('This Markdown file could not be opened. It may have been moved or deleted.'); }
@@ -333,7 +403,21 @@ export function App() {
     };
     window.addEventListener('keydown', key); return () => window.removeEventListener('keydown', key);
   }, []);
-  const closeTab = (key: string) => setTabs((before) => { const index = before.findIndex((tab) => tab.key === key); const next = before.filter((tab) => tab.key !== key); if (activeKey === key) setActiveKey(next[Math.max(0, index - 1)]?.key); return next; });
+  const closeTab = useCallback((key: string) => setTabs((before) => { const index = before.findIndex((tab) => tab.key === key); const next = before.filter((tab) => tab.key !== key); if (activeKey === key) setActiveKey(next[Math.max(0, index - 1)]?.key); return next; }), [activeKey]);
+  useEffect(() => {
+    const key = (event: KeyboardEvent) => {
+      if (event.ctrlKey && event.key === 'Tab' && tabs.length > 1) {
+        event.preventDefault();
+        const index = tabs.findIndex((tab) => tab.key === activeKey);
+        const direction = event.shiftKey ? -1 : 1;
+        setActiveKey(tabs[(index + direction + tabs.length) % tabs.length].key);
+      }
+      if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'f') { event.preventDefault(); setFocusMode((value) => !value); }
+      if (event.key === 'Escape' && focusMode) setFocusMode(false);
+    };
+    window.addEventListener('keydown', key);
+    return () => window.removeEventListener('keydown', key);
+  }, [activeKey, focusMode, tabs]);
   const updateTabTitle = (key: string, title: string) => setTabs((before) => before.map((tab) => tab.key === key && tab.kind === 'internal' ? { ...tab, title } : tab));
   const updateExternalTab = (key: string, document: ExternalDocument) => {
     const nextKey = `file:${document.path.toLowerCase()}`;
@@ -391,21 +475,46 @@ export function App() {
     await refresh();
   };
   const activePageId = active?.kind === 'internal' ? active.pageId : undefined;
-  return <div className="app" onClick={() => { setMenu(undefined); setStructureMenu(undefined); }}>
-    {sidebarOpen && <Sidebar data={navigation} activePageId={activePageId} onOpen={(p) => void openPageById(p.id)} onSearch={() => setSearchOpen(true)} onNewNotebook={() => setCreateDialog({ kind: 'notebook' })} onNewSection={(notebookId) => setCreateDialog({ kind: 'section', notebookId })} onNewPage={(id) => void createPage(id)} onNotebookMenu={(item, x, y) => { setMenu(undefined); setStructureMenu({ kind: 'notebook', item, x, y }); }} onSectionMenu={(item, x, y) => { setMenu(undefined); setStructureMenu({ kind: 'section', item, x, y }); }} onPageMenu={(page, x, y) => { setStructureMenu(undefined); setMenu({ page, x, y }); }} onEmptyTrash={() => void emptyTrash()} onDropPage={async (pageId, sectionId) => { await window.notes.pages.move(pageId, sectionId, 0); await refresh(); }} />}
+  const activeLocation = (() => {
+    if (!activePageId) return undefined;
+    for (const notebook of navigation.notebooks) for (const section of notebook.sections) if (section.pages.some((page) => page.id === activePageId)) return { notebookId: notebook.id, notebook: notebook.name, sectionId: section.id, section: section.name };
+    return undefined;
+  })();
+  const revealSidebarItem = (id: string) => {
+    setFocusMode(false); setSidebarOpen(true);
+    window.requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-nav-id="${id}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+  };
+  const sidebarVisible = sidebarOpen && !focusMode;
+  const explorerVisible = markdownExplorerOpen && markdownFolder && !focusMode;
+  return <div className={`app ${focusMode ? 'focus-mode' : ''}`} onClick={() => { setMenu(undefined); setStructureMenu(undefined); setTabsMenuOpen(false); }}>
+    {sidebarVisible && <Sidebar width={sidebarWidth} data={navigation} activePageId={activePageId} onOpen={(p) => void openPageById(p.id)} onSearch={() => setSearchOpen(true)} onNewNotebook={() => setCreateDialog({ kind: 'notebook' })} onNewSection={(notebookId) => setCreateDialog({ kind: 'section', notebookId })} onNewPage={(id) => void createPage(id)} onNotebookMenu={(item, x, y) => { setMenu(undefined); setStructureMenu({ kind: 'notebook', item, x, y }); }} onSectionMenu={(item, x, y) => { setMenu(undefined); setStructureMenu({ kind: 'section', item, x, y }); }} onPageMenu={(page, x, y) => { setStructureMenu(undefined); setMenu({ page, x, y }); }} onEmptyTrash={() => void emptyTrash()} onDropPage={async (pageId, sectionId) => { await window.notes.pages.move(pageId, sectionId, 0); await refresh(); }} />}
+    {sidebarVisible && <div className="panel-resizer sidebar-resizer" role="separator" aria-label="Resize notebook sidebar" aria-orientation="vertical" onPointerDown={(event) => startPanelResize(event, 'sidebar')} />}
     <section className="workspace">
-      <header className="topbar"><button className="sidebar-toggle" onClick={() => setSidebarOpen(!sidebarOpen)} title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}>{sidebarOpen ? <PanelLeftClose size={17} /> : <PanelLeftOpen size={17} />}</button><div className="history-buttons"><button disabled={!canGoBack} title="Previous page or tab" aria-label="Previous page or tab" onClick={() => void moveWorkspaceHistory(-1)}><ArrowLeft size={16} /></button><button disabled={!canGoForward} title="Next page or tab" aria-label="Next page or tab" onClick={() => void moveWorkspaceHistory(1)}><ArrowRight size={16} /></button></div><div className="tabs">{tabs.map((tab) => <button key={tab.key} className={`tab ${tab.key === activeKey ? 'active' : ''}`} onClick={() => setActiveKey(tab.key)}><span>{tab.kind === 'internal' ? tab.title : `${tab.document.filename}${tab.document.isDirty ? '  •' : ''}`}</span><i onClick={(e) => { e.stopPropagation(); closeTab(tab.key); }}><X size={13} /></i></button>)}</div><button title="New note" onClick={() => void createPage()}><Plus size={17} /></button><button className={markdownExplorerOpen ? 'active' : ''} title="Markdown folder explorer" onClick={toggleMarkdownExplorer}><FolderTree size={16} /></button><button title="Settings" onClick={() => setSettingsOpen(true)}><SettingsIcon size={16} /></button></header>
+      <header className="topbar">
+        <button className="sidebar-toggle" onClick={() => focusMode ? setFocusMode(false) : setSidebarOpen(!sidebarOpen)} title={sidebarVisible ? 'Hide sidebar' : 'Show sidebar'}>{sidebarVisible ? <PanelLeftClose size={17} /> : <PanelLeftOpen size={17} />}</button>
+        <div className="history-buttons"><button disabled={!canGoBack} title="Previous page or tab" aria-label="Previous page or tab" onClick={() => void moveWorkspaceHistory(-1)}><ArrowLeft size={16} /></button><button disabled={!canGoForward} title="Next page or tab" aria-label="Next page or tab" onClick={() => void moveWorkspaceHistory(1)}><ArrowRight size={16} /></button></div>
+        <div className="tabs">{tabs.map((tab) => <button key={tab.key} className={`tab ${tab.key === activeKey ? 'active' : ''}`} title={tab.kind === 'internal' ? tab.title : tab.document.path} onClick={() => setActiveKey(tab.key)}><FileText className="tab-icon" size={13} /><span>{tab.kind === 'internal' ? tab.title : tab.document.filename}</span>{tab.kind === 'external' && tab.document.isDirty && <b className="dirty-dot" title="Unsaved changes" />}<i onClick={(e) => { e.stopPropagation(); closeTab(tab.key); }}><X size={13} /></i></button>)}</div>
+        {!!tabs.length && <button className={tabsMenuOpen ? 'active' : ''} title="All open tabs" aria-label="All open tabs" onClick={(event) => { event.stopPropagation(); setTabsMenuOpen((value) => !value); }}><List size={16} /></button>}
+        <button title="New note" onClick={() => void createPage()}><Plus size={17} /></button>
+        <button className={markdownExplorerOpen && !focusMode ? 'active' : ''} title="Markdown folder explorer" onClick={toggleMarkdownExplorer}><FolderTree size={16} /></button>
+        <button className={`quick-backup ${backupStatus?.folder ? 'configured' : ''}`} disabled={backupBusy} title={backupStatus?.folder ? `Back up now · Automatic backup ${backupStatus.frequency === 'hourly' ? 'every hour' : backupStatus.frequency}` : 'Configure backup'} onClick={() => void quickBackup()}>{backupBusy ? <LoaderCircle className="spin" size={16} /> : <CloudUpload size={16} />}<span>{backupBusy ? 'Backing up' : 'Backup'}</span></button>
+        <button className={focusMode ? 'active' : ''} title={focusMode ? 'Exit focus mode (Ctrl+Shift+F)' : 'Focus mode (Ctrl+Shift+F)'} onClick={() => setFocusMode((value) => !value)}>{focusMode ? <Minimize2 size={16} /> : <Maximize2 size={16} />}</button>
+        <button title="Settings" onClick={() => setSettingsOpen(true)}><SettingsIcon size={16} /></button>
+      </header>
+      {tabsMenuOpen && <div className="tabs-menu" onClick={(event) => event.stopPropagation()}><header><strong>Open tabs</strong><span>{tabs.length}</span></header>{tabs.map((tab) => <button key={`menu-${tab.key}`} className={tab.key === activeKey ? 'active' : ''} onClick={() => { setActiveKey(tab.key); setTabsMenuOpen(false); }}><FileText size={14} /><span>{tab.kind === 'internal' ? tab.title : tab.document.filename}</span>{tab.kind === 'external' && tab.document.isDirty && <b className="dirty-dot" />}</button>)}</div>}
       {!active && <div className="empty-state"><div className="empty-icon">N</div><h1>Welcome to Notes</h1><p>A quiet place for your ideas, technical notes, and Markdown documents.</p><div><button className="primary" onClick={() => void createPage()}><FilePlus2 size={17} />New note</button><button onClick={() => void openMarkdown()}><FolderOpen size={17} />Open Markdown</button></div></div>}
-      {active?.kind === 'internal' && <InternalDocument key={active.pageId} pageId={active.pageId} settings={settings} onTitle={(title) => updateTabTitle(active.key, title)} onSaved={refresh} onOpenPage={(pageId) => void navigateInActiveTab(pageId)} onStructureChange={() => void refresh()} />}
+      {active?.kind === 'internal' && <InternalDocument key={active.pageId} pageId={active.pageId} settings={settings} breadcrumb={activeLocation} onRevealBreadcrumb={revealSidebarItem} onTitle={(title) => updateTabTitle(active.key, title)} onSaved={refresh} onOpenPage={(pageId) => void navigateInActiveTab(pageId)} onStructureChange={() => void refresh()} />}
       {active?.kind === 'external' && <ExternalDocumentView key={active.document.path} initial={active.document} onDocumentChange={(doc) => updateExternalTab(active.key, doc)} onOpenLinkedDocument={(sourcePath, href) => void openLinkedMarkdown(sourcePath, href)} />}
     </section>
-    {markdownExplorerOpen && markdownFolder && <MarkdownFolderExplorer tree={markdownFolder} activePath={active?.kind === 'external' ? active.document.path : undefined} onOpen={(path) => void openExplorerFile(path)} onChoose={() => void chooseMarkdownFolder()} onClose={() => setMarkdownExplorerOpen(false)} />}
+    {explorerVisible && <div className="panel-resizer explorer-resizer" role="separator" aria-label="Resize Markdown Explorer" aria-orientation="vertical" onPointerDown={(event) => startPanelResize(event, 'explorer')} />}
+    {explorerVisible && <MarkdownFolderExplorer tree={markdownFolder} width={explorerWidth} activePath={active?.kind === 'external' ? active.document.path : undefined} onOpen={(path) => void openExplorerFile(path)} onChoose={() => void chooseMarkdownFolder()} onClose={() => setMarkdownExplorerOpen(false)} />}
     {searchOpen && <SearchPalette onClose={() => setSearchOpen(false)} onOpen={(id) => void openPageById(id)} />}
-    {settingsOpen && <SettingsDialog settings={settings} onChange={setSettings} onClose={() => setSettingsOpen(false)} />}
+    {settingsOpen && <SettingsDialog settings={settings} onChange={setSettings} onClose={() => { setSettingsOpen(false); void window.notes.backup.status().then(setBackupStatus); }} />}
     {createDialog?.kind === 'notebook' && <CreateDialog title="New notebook" label="Give this notebook a name. A first section and page will be created automatically." initialValue="New notebook" onCancel={() => setCreateDialog(undefined)} onCreate={async (name) => { const notebook = await window.notes.notebooks.create(name); const section = await window.notes.sections.create(notebook.id, 'Quick Notes'); const page = await window.notes.pages.create(section.id, 'Untitled'); setCreateDialog(undefined); await refresh(); await openPageById(page.id); }} />}
     {createDialog?.kind === 'section' && <CreateDialog title="New section" label="Add a section to this notebook. Its first page will open immediately." initialValue="New section" onCancel={() => setCreateDialog(undefined)} onCreate={async (name) => { const section = await window.notes.sections.create(createDialog.notebookId, name); const page = await window.notes.pages.create(section.id, 'Untitled'); setCreateDialog(undefined); await refresh(); await openPageById(page.id); }} />}
     {renameDialog && <CreateDialog title={`Rename ${renameDialog.kind}`} label={`Choose a new name for “${renameDialog.name}”.`} initialValue={renameDialog.name} submitLabel="Rename" busyLabel="Renaming…" onCancel={() => setRenameDialog(undefined)} onCreate={async (name) => { if (renameDialog.kind === 'notebook') await window.notes.notebooks.rename(renameDialog.id, name); else await window.notes.sections.rename(renameDialog.id, name); setRenameDialog(undefined); await refresh(); }} />}
     {menu && <div className="context-menu" style={{ left: Math.min(menu.x, innerWidth - 190), top: Math.min(menu.y, innerHeight - 190) }} onClick={(e) => e.stopPropagation()}>{menu.page.isDeleted ? <><button onClick={() => void handlePageMenu('restore')}>Restore</button><button className="danger" onClick={() => void handlePageMenu('remove')}>Delete permanently</button></> : <><button onClick={() => void openPageById(menu.page.id)}>Open</button><button onClick={() => void handlePageMenu('favorite')}>{menu.page.isFavorite ? 'Remove from favorites' : 'Add to favorites'}</button><button onClick={() => void handlePageMenu('export')}>Export Markdown…</button><hr /><button className="danger" onClick={() => void handlePageMenu('trash')}>Move to Trash</button></>}</div>}
     {structureMenu && <div className="context-menu structure-menu" style={{ left: Math.min(structureMenu.x, innerWidth - 190), top: Math.min(structureMenu.y, innerHeight - 160) }} onClick={(event) => event.stopPropagation()}><div className="context-title">{structureMenu.item.name}</div><button onClick={() => void handleStructureMenu('add')}>{structureMenu.kind === 'notebook' ? 'Add section' : 'Add sidebar page'}</button><button onClick={() => void handleStructureMenu('rename')}>Rename {structureMenu.kind}…</button><hr /><button className="danger" onClick={() => void handleStructureMenu('delete')}>Delete {structureMenu.kind}</button></div>}
+    {toast && <ToastNotice toast={toast} onClose={() => setToast(undefined)} />}
   </div>;
 }

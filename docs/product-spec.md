@@ -4,6 +4,8 @@ The V1 product is a calm macOS and Windows notebook and Markdown reader/editor. 
 
 The visual system prioritizes Segoe UI typography, whitespace, a restrained neutral palette, an 880px reading column, strong Markdown rhythm, and clearly separated code blocks. Light mode is primary; dark and system themes remain tasteful and low contrast.
 
+The workspace uses resizable notebook and Markdown Explorer panels whose widths persist locally. Tabs use compact document icons, clear active and unsaved states, and an all-tabs menu for crowded workspaces. Internal notes show clickable notebook and section breadcrumbs. Focus mode temporarily hides both side panels and can be toggled with Ctrl+Shift+F.
+
 Pages created explicitly with a section's `+` control are sidebar pages. Pages created with the editor's `/ → Page` command prompt for a name and become inline child pages: that name is both the page heading and inline link text. Child pages remain stored inside the same notebook and are searchable and backed up, but they do not appear in the section tree, Favorites, Recent, or Trash. Following an internal page link navigates within the current tab; Back and Forward return through that tab's page history.
 
 Notebook and section overflow menus expose creation and permanent deletion. Deleting either container requires confirmation and cascades to both sidebar and inline child pages. Recent pages are collapsible.
@@ -25,7 +27,9 @@ Direct cloud accounts, live multi-device editing, collaboration, AI, databases, 
 ## Backup and recovery
 
 - A backup is one compressed, integrity-checked file containing a consistent SQLite snapshot, settings, drafts, and all managed attachments.
-- Users can create a backup immediately or schedule it daily or weekly while Notes is running.
+- Users can create a backup immediately or schedule it hourly, daily, or weekly while Notes is running.
+- The top toolbar includes a one-click backup action with progress and completion notifications.
+- Newly configured backup folders default to automatic hourly backups while Notes is running; hourly, daily, weekly, and off remain available in Settings.
 - Retention is configurable from 5 to 50 backups; only files created by Notes are eligible for cleanup.
 - Restore validates the archive and its database, creates a safety backup of the current library, then restarts and applies the replacement before SQLite opens.
 - Backup folder detection labels OneDrive, Google Drive, and ordinary local folders. Cloud transfer is performed by the provider's desktop sync client.

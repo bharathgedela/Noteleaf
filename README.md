@@ -11,6 +11,9 @@ A local-first notebook and Markdown reader/editor for macOS and Windows.
 - Browse every Markdown file in a folder from a collapsible tree
 - Follow relative links between Markdown documents inside Notes
 - Move between linked pages or adjacent open tabs with the back and forward arrows
+- Resize the notebook and Markdown Explorer panels, use clickable breadcrumbs, and enter focus mode
+- Find any open document from the polished all-tabs menu
+- Create a backup from the top toolbar and automatically back up every hour
 - Back up the local notes library to a local or synced folder
 
 ## Requirements
