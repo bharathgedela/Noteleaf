@@ -1,6 +1,6 @@
 {
   "name": "notes-desktop",
-  "version": "0.3.9",
+  "version": "0.3.10",
   "private": true,
   "author": "Bharath Kumar Gedela",
   "description": "A calm, local-first notebook and Markdown reader for macOS and Windows.",

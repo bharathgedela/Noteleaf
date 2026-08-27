@@ -142,6 +142,13 @@ export class NotesRepository {
   trashPage(id: string): void { this.db.prepare('UPDATE pages SET is_deleted = 1, updated_at = ? WHERE id = ?').run(now(), id); }
   restorePage(id: string): void { this.db.prepare('UPDATE pages SET is_deleted = 0, updated_at = ? WHERE id = ?').run(now(), id); }
   removePage(id: string): void { this.db.prepare('DELETE FROM pages WHERE id = ?').run(id); }
+  emptyTrash(): string[] {
+    return this.db.transaction(() => {
+      const pageIds = (this.db.prepare('SELECT id FROM pages WHERE is_deleted = 1').all() as Array<{ id: string }>).map((row) => row.id);
+      this.db.prepare('DELETE FROM pages WHERE is_deleted = 1').run();
+      return pageIds;
+    })();
+  }
   toggleFavorite(id: string): void { this.db.prepare('UPDATE pages SET is_favorite = CASE is_favorite WHEN 0 THEN 1 ELSE 0 END, updated_at = ? WHERE id = ?').run(now(), id); }
   movePage(id: string, sectionId: string, position: number): void {
     this.db.transaction(() => {

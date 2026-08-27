@@ -21,6 +21,7 @@ const api: NotesApi = {
     rename: (id, title) => invoke('pages:rename', id, title),
     trash: (id) => invoke('pages:trash', id), restore: (id) => invoke('pages:restore', id),
     removePermanently: (id) => invoke('pages:remove', id),
+    emptyTrash: () => invoke('pages:empty-trash'),
     toggleFavorite: (id) => invoke('pages:favorite', id),
     move: (id, sectionId, position) => invoke('pages:move', id, sectionId, position),
   },

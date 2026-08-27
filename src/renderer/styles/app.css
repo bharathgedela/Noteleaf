@@ -82,6 +82,9 @@ kbd { padding: 2px 5px; border: 1px solid var(--border-strong); border-radius: 4
 .trash-popover { max-height: 130px; overflow: auto; border-top: 1px solid var(--border); padding-top: 5px; }
 .trash-popover button { width: 100%; display: flex; align-items: center; gap: 7px; padding: 6px 8px; color: var(--muted); font-size: 12px; text-align: left; }
 .trash-popover button svg:last-child { margin-left: auto; }
+.trash-actions { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 2px 5px 5px 9px; color: var(--faint); font-size: 10px; }
+.trash-actions .empty-trash { width: auto; padding: 4px 6px; color: #b64f43; font-size: 10px; }
+.trash-actions .empty-trash:hover { background: color-mix(in srgb, #b64f43 10%, transparent); color: #9f382f; }
 
 .workspace { position: relative; min-width: 0; flex: 1; display: flex; flex-direction: column; background: var(--surface); }
 .topbar { height: 43px; min-height: 43px; display: flex; align-items: center; border-bottom: 1px solid var(--border); background: var(--surface); padding: 0 8px; }

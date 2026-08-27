@@ -13,6 +13,7 @@ interface SidebarProps {
   onSectionMenu: (section: SectionTree, x: number, y: number) => void;
   onSearch: () => void;
   onPageMenu: (page: PageSummary, x: number, y: number) => void;
+  onEmptyTrash: () => void;
   onDropPage: (pageId: string, sectionId: string) => void;
 }
 
@@ -56,6 +57,6 @@ export function Sidebar(props: SidebarProps) {
       {props.data.recent.length > 0 && <nav className={`sidebar-group recent ${recentCollapsed ? 'collapsed' : ''}`}><button className="group-label collapsible" onClick={() => setRecentCollapsed((value) => !value)}>{recentCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}<span>Recent</span><b>{props.data.recent.length}</b></button>{!recentCollapsed && props.data.recent.slice(0, 4).map((page) => <PageRow key={`recent-${page.id}`} page={page} active={props.activePageId === page.id} onOpen={() => props.onOpen(page)} onMenu={(x, y) => props.onPageMenu(page, x, y)} />)}</nav>}
     </div>
     <button className="trash-button" onClick={() => setShowTrash(!showTrash)}><Trash2 size={14} /><span>Trash</span>{props.data.trash.length > 0 && <b>{props.data.trash.length}</b>}</button>
-    {showTrash && props.data.trash.length > 0 && <div className="trash-popover">{props.data.trash.map((page) => <button key={page.id} onContextMenu={(e) => { e.preventDefault(); props.onPageMenu(page, e.clientX, e.clientY); }}><FileText size={13} />{page.title}<MoreHorizontal size={13} /></button>)}</div>}
+    {showTrash && props.data.trash.length > 0 && <div className="trash-popover"><div className="trash-actions"><span>{props.data.trash.length} item{props.data.trash.length === 1 ? '' : 's'}</span><button className="empty-trash" onClick={props.onEmptyTrash}>Empty Trash</button></div>{props.data.trash.map((page) => <button key={page.id} onContextMenu={(e) => { e.preventDefault(); props.onPageMenu(page, e.clientX, e.clientY); }}><FileText size={13} />{page.title}<MoreHorizontal size={13} /></button>)}</div>}
   </aside>;
 }

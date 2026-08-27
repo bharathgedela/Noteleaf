@@ -7,7 +7,7 @@ import type { BackupService } from './backup/service.js';
 const CHANNELS = [
   'navigation:list', 'notebooks:create', 'notebooks:rename', 'notebooks:remove',
   'sections:create', 'sections:rename', 'sections:remove', 'pages:create', 'pages:get',
-  'pages:save', 'pages:rename', 'pages:trash', 'pages:restore', 'pages:remove',
+  'pages:save', 'pages:rename', 'pages:trash', 'pages:restore', 'pages:remove', 'pages:empty-trash',
   'pages:favorite', 'pages:move', 'search:full', 'search:quick', 'files:open',
   'files:open-linked', 'files:open-folder', 'files:save', 'files:save-as', 'files:draft', 'files:clear-draft', 'files:import', 'files:export', 'files:recent',
   'files:attachment', 'settings:get', 'settings:update', 'settings:open-data', 'system:open-external',
@@ -50,6 +50,7 @@ export function registerIpc(repository: NotesRepository, files: FileService, bac
   ipcMain.handle('pages:trash', (_event, rawId) => repository.trashPage(id(rawId)));
   ipcMain.handle('pages:restore', (_event, rawId) => repository.restorePage(id(rawId)));
   ipcMain.handle('pages:remove', (_event, rawId) => repository.removePage(id(rawId)));
+  ipcMain.handle('pages:empty-trash', () => repository.emptyTrash());
   ipcMain.handle('pages:favorite', (_event, rawId) => repository.toggleFavorite(id(rawId)));
   ipcMain.handle('pages:move', (_event, rawId, sectionId, position) => repository.movePage(id(rawId), id(sectionId), Math.max(0, Number(position) || 0)));
   ipcMain.handle('search:full', (_event, query) => repository.fullSearch(typeof query === 'string' ? query.slice(0, 300) : ''));

@@ -6,6 +6,7 @@ A local-first notebook and Markdown reader/editor for macOS and Windows.
 
 - Organize local notes into notebooks, sections, and linked child pages
 - Scroll large notebook trees independently while keeping search and Trash accessible
+- Empty every trashed page at once after a safety confirmation
 - Open, preview, edit, and save Markdown files
 - Browse every Markdown file in a folder from a collapsible tree
 - Follow relative links between Markdown documents inside Notes

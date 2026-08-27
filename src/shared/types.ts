@@ -130,6 +130,7 @@ export interface NotesApi {
     trash(id: Id): Promise<void>;
     restore(id: Id): Promise<void>;
     removePermanently(id: Id): Promise<void>;
+    emptyTrash(): Promise<Id[]>;
     toggleFavorite(id: Id): Promise<void>;
     move(id: Id, sectionId: Id, position: number): Promise<void>;
   };

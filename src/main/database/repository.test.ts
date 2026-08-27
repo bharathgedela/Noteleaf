@@ -73,6 +73,21 @@ describe('NotesRepository', () => {
     expect(() => repository!.getPage(sourcePage.id)).toThrow();
   });
 
+  it('permanently removes every trashed page at once', () => {
+    const section = repository!.navigation().notebooks[0].sections[0];
+    const first = repository!.createPage(section.id, 'Old draft');
+    const second = repository!.createPage(section.id, 'Old checklist');
+    const kept = repository!.createPage(section.id, 'Keep me');
+    repository!.trashPage(first.id);
+    repository!.trashPage(second.id);
+
+    expect(repository!.emptyTrash()).toEqual(expect.arrayContaining([first.id, second.id]));
+    expect(repository!.navigation().trash).toHaveLength(0);
+    expect(() => repository!.getPage(first.id)).toThrow();
+    expect(() => repository!.getPage(second.id)).toThrow();
+    expect(repository!.getPage(kept.id).title).toBe('Keep me');
+  });
+
   it('keeps inline child pages out of sidebar navigation and recents', () => {
     const section = repository!.navigation().notebooks[0].sections[0];
     const parent = section.pages[0];
