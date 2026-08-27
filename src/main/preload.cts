@@ -28,6 +28,7 @@ const api: NotesApi = {
   files: {
     openMarkdown: (path) => invoke('files:open', path),
     openLinkedMarkdown: (sourcePath, href) => invoke('files:open-linked', sourcePath, href),
+    openMarkdownFolder: () => invoke('files:open-folder'),
     saveMarkdown: (path, content, mode) => invoke('files:save', path, content, mode),
     saveMarkdownAs: (content, name) => invoke('files:save-as', content, name),
     persistDraft: (path, content) => invoke('files:draft', path, content),

@@ -9,7 +9,7 @@ const CHANNELS = [
   'sections:create', 'sections:rename', 'sections:remove', 'pages:create', 'pages:get',
   'pages:save', 'pages:rename', 'pages:trash', 'pages:restore', 'pages:remove',
   'pages:favorite', 'pages:move', 'search:full', 'search:quick', 'files:open',
-  'files:open-linked', 'files:save', 'files:save-as', 'files:draft', 'files:clear-draft', 'files:import', 'files:export', 'files:recent',
+  'files:open-linked', 'files:open-folder', 'files:save', 'files:save-as', 'files:draft', 'files:clear-draft', 'files:import', 'files:export', 'files:recent',
   'files:attachment', 'settings:get', 'settings:update', 'settings:open-data', 'system:open-external',
   'backup:status', 'backup:choose-folder', 'backup:create', 'backup:set-schedule', 'backup:restore', 'backup:open-folder',
 ] as const;
@@ -56,6 +56,7 @@ export function registerIpc(repository: NotesRepository, files: FileService, bac
   ipcMain.handle('search:quick', (_event, query) => repository.quickSearch(typeof query === 'string' ? query.slice(0, 300) : ''));
   ipcMain.handle('files:open', (_event, path?: string) => files.openMarkdown(path ? text(path, 'Path', 32767) : undefined));
   ipcMain.handle('files:open-linked', (_event, sourcePath, href) => files.openLinkedMarkdown(text(sourcePath, 'Source path', 32767), text(href, 'Link', 32767)));
+  ipcMain.handle('files:open-folder', () => files.openMarkdownFolder());
   ipcMain.handle('files:save', (_event, path, content, mode) => files.saveMarkdown(text(path, 'Path', 32767), source(content), viewMode(mode)));
   ipcMain.handle('files:save-as', (_event, content, name?: string) => files.saveMarkdownAs(source(content), name ? text(name, 'Filename') : undefined));
   ipcMain.handle('files:draft', (_event, path, content) => repository.saveDraft(text(path, 'Path', 32767), source(content)));

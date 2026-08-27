@@ -16,6 +16,10 @@ Code blocks support explicit link marks in Edit mode. HTTP and HTTPS URLs inside
 
 Markdown documents opened from disk support links to other Markdown files. Relative paths are resolved from the current document's folder, URL-encoded filenames and heading fragments are accepted, and the target opens or activates as another tab inside Notes. Missing, moved, non-Markdown, and unsupported links show a clear error instead of opening an unsafe path.
 
+The collapsible Markdown Explorer appears on the right side of the workspace. Users can choose a folder from the toolbar or File menu; Notes scans it recursively, skips generated/dependency folders, and presents all supported Markdown files in an expandable VS Code-style tree. Clicking a file opens or activates it as a Notes tab without replacing unsaved edits in an already-open tab.
+
+Recovered external-file drafts can be discarded reliably, which clears the persisted draft, restores the on-disk content, and closes the recovery banner. The banner also has a separate close control that keeps the recovered text while dismissing the message.
+
 Direct cloud accounts, live multi-device editing, collaboration, AI, databases, canvases, and other generalized productivity features are intentionally excluded. Disaster recovery is included through portable `.notesbackup` archives. Users can place these archives in OneDrive or Google Drive desktop-synced folders without giving Notes cloud credentials.
 
 ## Backup and recovery

@@ -74,6 +74,18 @@ export interface ExternalDocument {
   modifiedAt: string;
 }
 
+export type MarkdownFolderEntry =
+  | { kind: 'folder'; name: string; path: string; children: MarkdownFolderEntry[] }
+  | { kind: 'file'; name: string; path: string };
+
+export interface MarkdownFolderTree {
+  name: string;
+  path: string;
+  children: MarkdownFolderEntry[];
+  fileCount: number;
+  truncated: boolean;
+}
+
 export interface SearchResult {
   id: Id;
   title: string;
@@ -128,6 +140,7 @@ export interface NotesApi {
   files: {
     openMarkdown(path?: string): Promise<ExternalDocument | null>;
     openLinkedMarkdown(sourcePath: string, href: string): Promise<ExternalDocument>;
+    openMarkdownFolder(): Promise<MarkdownFolderTree | null>;
     saveMarkdown(path: string, content: string, viewMode: MarkdownViewMode): Promise<ExternalDocument>;
     saveMarkdownAs(content: string, suggestedName?: string): Promise<ExternalDocument | null>;
     persistDraft(path: string, content: string): Promise<void>;

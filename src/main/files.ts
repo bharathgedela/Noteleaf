@@ -7,6 +7,7 @@ import sanitizeHtml from 'sanitize-html';
 import type { ExternalDocument, MarkdownViewMode, Page } from '../shared/types.js';
 import type { NotesRepository } from './database/repository.js';
 import { resolveMarkdownLink } from './markdown-links.js';
+import { scanMarkdownFolder } from './markdown-folder.js';
 
 const MAX_MARKDOWN_BYTES = 20 * 1024 * 1024;
 const MIME_EXTENSIONS: Record<string, string> = {
@@ -49,6 +50,12 @@ export class FileService {
     const document = await this.openMarkdown(target);
     if (!document) throw new Error('The linked Markdown file could not be opened');
     return document;
+  }
+
+  async openMarkdownFolder(): Promise<import('../shared/types.js').MarkdownFolderTree | null> {
+    const result = await dialog.showOpenDialog({ title: 'Open Markdown Folder', properties: ['openDirectory'] });
+    if (result.canceled || !result.filePaths[0]) return null;
+    return scanMarkdownFolder(result.filePaths[0]);
   }
 
   async saveMarkdown(path: string, content: string, viewMode: MarkdownViewMode): Promise<ExternalDocument> {

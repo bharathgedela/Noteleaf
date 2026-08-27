@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, FilePlus2, FolderOpen, PanelLeftClose, PanelLeftOpen, Plus, Settings as SettingsIcon, X } from 'lucide-react';
-import type { AppSettings, BackupStatus, ExternalDocument, NavigationData, NotebookTree, Page, PageSummary, SaveState, SearchResult, SectionTree } from '../../shared/types';
+import { ArrowLeft, ArrowRight, ChevronDown, ChevronRight, FilePlus2, FileText, Folder, FolderOpen, FolderTree, PanelLeftClose, PanelLeftOpen, Plus, RefreshCw, Settings as SettingsIcon, X } from 'lucide-react';
+import type { AppSettings, BackupStatus, ExternalDocument, MarkdownFolderEntry, MarkdownFolderTree, NavigationData, NotebookTree, Page, PageSummary, SaveState, SearchResult, SectionTree } from '../../shared/types';
 import { Sidebar } from '../sidebar/Sidebar';
 import { RichEditor } from '../editor/RichEditor';
 import { MarkdownPreview } from '../markdown/MarkdownPreview';
@@ -82,9 +82,10 @@ function ExternalDocumentView({ initial, onDocumentChange, onOpenLinkedDocument 
   const [source, setSource] = useState(initial.recoveryContent || initial.content);
   const [dirty, setDirty] = useState(Boolean(initial.recoveryContent && initial.recoveryContent !== initial.content));
   const [saving, setSaving] = useState(false);
+  const [recoveryBannerOpen, setRecoveryBannerOpen] = useState(Boolean(initial.recoveryContent && initial.recoveryContent !== initial.content));
   // File identity controls reloading; same-file tab metadata updates must not overwrite edits.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => { setDocument(initial); setSource(initial.recoveryContent || initial.content); setDirty(Boolean(initial.recoveryContent && initial.recoveryContent !== initial.content)); }, [initial.path]);
+  useEffect(() => { const recovered = Boolean(initial.recoveryContent && initial.recoveryContent !== initial.content); setDocument(initial); setSource(initial.recoveryContent || initial.content); setDirty(recovered); setRecoveryBannerOpen(recovered); }, [initial.path]);
   useEffect(() => {
     if (!dirty) return;
     const timer = window.setTimeout(() => void window.notes.files.persistDraft(document.path, source), 650);
@@ -92,12 +93,12 @@ function ExternalDocumentView({ initial, onDocumentChange, onOpenLinkedDocument 
   }, [dirty, document.path, source]);
   const save = useCallback(async () => {
     setSaving(true);
-    try { const saved = await window.notes.files.saveMarkdown(document.path, source, document.viewMode); setDocument(saved); setDirty(false); onDocumentChange({ ...saved, isDirty: false }); }
+    try { const saved = await window.notes.files.saveMarkdown(document.path, source, document.viewMode); setDocument(saved); setDirty(false); setRecoveryBannerOpen(false); onDocumentChange({ ...saved, isDirty: false }); }
     finally { setSaving(false); }
   }, [document, source, onDocumentChange]);
   const saveAs = useCallback(async () => {
     const saved = await window.notes.files.saveMarkdownAs(source, document.filename);
-    if (saved) { setDocument(saved); setDirty(false); onDocumentChange({ ...saved, isDirty: false }); }
+    if (saved) { setDocument(saved); setDirty(false); setRecoveryBannerOpen(false); onDocumentChange({ ...saved, isDirty: false }); }
   }, [source, document.filename, onDocumentChange]);
   useEffect(() => {
     const listener = (event: Event) => { const command = (event as CustomEvent<string>).detail; if (command === 'save') void save(); if (command === 'save-as') void saveAs(); };
@@ -105,14 +106,39 @@ function ExternalDocumentView({ initial, onDocumentChange, onOpenLinkedDocument 
   }, [save, saveAs]);
   const setMode = (viewMode: ExternalDocument['viewMode']) => { const next = { ...document, viewMode, isDirty: dirty }; setDocument(next); onDocumentChange(next); };
   const editSource = (value: string) => { setSource(value); setDirty(true); onDocumentChange({ ...document, isDirty: true }); };
+  const discardRecovery = async () => {
+    try {
+      await window.notes.files.clearDraft(document.path);
+      const next = { ...document, content: initial.content, recoveryContent: undefined, isDirty: false };
+      setSource(initial.content); setDirty(false); setRecoveryBannerOpen(false); setDocument(next); onDocumentChange(next);
+    } catch { window.alert('The recovered draft could not be discarded. Please try again.'); }
+  };
   return <main className="document-view external-view">
     <header className="external-header"><div><h1>{document.filename}{dirty && <i> •</i>}</h1><p title={document.path}>{document.path}</p></div><div className="mode-switch"><button className={document.viewMode === 'preview' ? 'active' : ''} onClick={() => setMode('preview')}>Preview</button><button className={document.viewMode === 'edit' ? 'active' : ''} onClick={() => setMode('edit')}>Edit</button><button className={document.viewMode === 'split' ? 'active' : ''} onClick={() => setMode('split')}>Split</button></div></header>
-    {initial.recoveryContent && initial.recoveryContent !== initial.content && <div className="recovery-banner">Recovered unsaved changes from your last editing session. <button onClick={() => { setSource(initial.content); setDirty(false); void window.notes.files.clearDraft(document.path); onDocumentChange({ ...document, isDirty: false }); }}>Discard recovery</button></div>}
+    {recoveryBannerOpen && <div className="recovery-banner"><span>Recovered unsaved changes from your last editing session.</span><div><button onClick={() => void discardRecovery()}>Discard recovery</button><button className="recovery-close" title="Keep recovery and close message" aria-label="Keep recovery and close message" onClick={() => setRecoveryBannerOpen(false)}><X size={14} /></button></div></div>}
     {document.viewMode === 'preview' && <div className="external-preview"><MarkdownPreview source={source} onOpenDocument={(href) => onOpenLinkedDocument(document.path, href)} /></div>}
     {document.viewMode === 'edit' && <textarea className="markdown-source single" aria-label="Markdown source" value={source} onChange={(e) => editSource(e.target.value)} spellCheck={false} />}
     {document.viewMode === 'split' && <div className="split-view"><textarea className="markdown-source" aria-label="Markdown source" value={source} onChange={(e) => editSource(e.target.value)} spellCheck={false} /><div className="split-preview"><MarkdownPreview source={source} onOpenDocument={(href) => onOpenLinkedDocument(document.path, href)} /></div></div>}
     {(dirty || saving) && <div className="external-save-status">{saving ? 'Saving…' : 'Unsaved changes · Ctrl+S'}</div>}
   </main>;
+}
+
+function MarkdownTreeItem({ entry, activePath, onOpen }: { entry: MarkdownFolderEntry; activePath?: string; onOpen: (path: string) => void }) {
+  const [expanded, setExpanded] = useState(true);
+  if (entry.kind === 'file') return <button className={`markdown-tree-file${activePath?.toLowerCase() === entry.path.toLowerCase() ? ' active' : ''}`} title={entry.path} onClick={() => onOpen(entry.path)}><FileText size={14} /><span>{entry.name}</span></button>;
+  return <div className="markdown-tree-folder">
+    <button className="markdown-tree-folder-row" title={entry.path} onClick={() => setExpanded((value) => !value)}>{expanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}<Folder size={14} /><span>{entry.name}</span></button>
+    {expanded && <div className="markdown-tree-children">{entry.children.map((child) => <MarkdownTreeItem key={child.path} entry={child} activePath={activePath} onOpen={onOpen} />)}</div>}
+  </div>;
+}
+
+function MarkdownFolderExplorer({ tree, activePath, onOpen, onChoose, onClose }: { tree: MarkdownFolderTree; activePath?: string; onOpen: (path: string) => void; onChoose: () => void; onClose: () => void }) {
+  return <aside className="markdown-explorer" aria-label="Markdown folder explorer">
+    <header><div><FolderTree size={16} /><strong>Markdown Explorer</strong></div><div><button title="Choose another folder" aria-label="Choose another folder" onClick={onChoose}><RefreshCw size={14} /></button><button title="Close explorer" aria-label="Close explorer" onClick={onClose}><X size={15} /></button></div></header>
+    <div className="markdown-explorer-root" title={tree.path}><FolderOpen size={14} /><strong>{tree.name}</strong><small>{tree.fileCount}</small></div>
+    <div className="markdown-explorer-tree">{tree.children.length ? tree.children.map((entry) => <MarkdownTreeItem key={entry.path} entry={entry} activePath={activePath} onOpen={onOpen} />) : <p>No Markdown files found in this folder.</p>}</div>
+    {tree.truncated && <footer>Showing the first 5,000 Markdown files.</footer>}
+  </aside>;
 }
 
 function SearchPalette({ onClose, onOpen }: { onClose: () => void; onOpen: (id: string) => void }) {
@@ -190,6 +216,8 @@ export function App() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [markdownFolder, setMarkdownFolder] = useState<MarkdownFolderTree>();
+  const [markdownExplorerOpen, setMarkdownExplorerOpen] = useState(false);
   const [createDialog, setCreateDialog] = useState<{ kind: 'notebook' } | { kind: 'section'; notebookId: string }>();
   const [renameDialog, setRenameDialog] = useState<RenameDialogState>();
   const [menu, setMenu] = useState<{ page: PageSummary; x: number; y: number }>();
@@ -235,9 +263,20 @@ export function App() {
   }, [activeKey, tabs, refresh]);
   const openExternal = useCallback((document: ExternalDocument) => {
     const key = `file:${document.path.toLowerCase()}`;
-    setTabs((before) => { const found = before.findIndex((tab) => tab.key === key); if (found >= 0) return before.map((tab) => tab.key === key ? { kind: 'external', key, document } : tab); return [...before, { kind: 'external', key, document }]; });
+    setTabs((before) => { const found = before.findIndex((tab) => tab.key === key); if (found >= 0) { const current = before[found]; if (current.kind === 'external' && current.document.isDirty) return before; return before.map((tab) => tab.key === key ? { kind: 'external', key, document } : tab); } return [...before, { kind: 'external', key, document }]; });
     setActiveKey(key);
   }, []);
+  const chooseMarkdownFolder = useCallback(async () => {
+    const tree = await window.notes.files.openMarkdownFolder();
+    if (tree) { setMarkdownFolder(tree); setMarkdownExplorerOpen(true); }
+  }, []);
+  const toggleMarkdownExplorer = useCallback(() => {
+    if (!markdownFolder) void chooseMarkdownFolder(); else setMarkdownExplorerOpen((value) => !value);
+  }, [markdownFolder, chooseMarkdownFolder]);
+  const openExplorerFile = useCallback(async (path: string) => {
+    try { const document = await window.notes.files.openMarkdown(path); if (document) openExternal(document); }
+    catch { window.alert('This Markdown file could not be opened. It may have been moved or deleted.'); }
+  }, [openExternal]);
   const openLinkedMarkdown = useCallback(async (sourcePath: string, href: string) => {
     try {
       openExternal(await window.notes.files.openLinkedMarkdown(sourcePath, href));
@@ -263,8 +302,8 @@ export function App() {
     const page = await window.notes.files.importMarkdown(target); if (page) { await refresh(); await openPageById(page.id); }
   }, [firstSection?.id, refresh, openPageById]);
   useEffect(() => window.notes.events.onCommand((command) => {
-    if (command === 'new-note') void createPage(); else if (command === 'open-markdown') void openMarkdown(); else if (command === 'import-markdown') void importMarkdown(); else if (command === 'quick-open') setSearchOpen(true); else if (command === 'backup-settings') setSettingsOpen(true); else window.dispatchEvent(new CustomEvent('notes-command', { detail: command }));
-  }), [createPage, openMarkdown, importMarkdown]);
+    if (command === 'new-note') void createPage(); else if (command === 'open-markdown') void openMarkdown(); else if (command === 'open-markdown-folder') void chooseMarkdownFolder(); else if (command === 'import-markdown') void importMarkdown(); else if (command === 'quick-open') setSearchOpen(true); else if (command === 'backup-settings') setSettingsOpen(true); else window.dispatchEvent(new CustomEvent('notes-command', { detail: command }));
+  }), [createPage, openMarkdown, chooseMarkdownFolder, importMarkdown]);
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
       if (event.ctrlKey && event.key.toLowerCase() === 'p') { event.preventDefault(); setSearchOpen(true); }
@@ -327,11 +366,12 @@ export function App() {
   return <div className="app" onClick={() => { setMenu(undefined); setStructureMenu(undefined); }}>
     {sidebarOpen && <Sidebar data={navigation} activePageId={activePageId} onOpen={(p) => void openPageById(p.id)} onSearch={() => setSearchOpen(true)} onNewNotebook={() => setCreateDialog({ kind: 'notebook' })} onNewSection={(notebookId) => setCreateDialog({ kind: 'section', notebookId })} onNewPage={(id) => void createPage(id)} onNotebookMenu={(item, x, y) => { setMenu(undefined); setStructureMenu({ kind: 'notebook', item, x, y }); }} onSectionMenu={(item, x, y) => { setMenu(undefined); setStructureMenu({ kind: 'section', item, x, y }); }} onPageMenu={(page, x, y) => { setStructureMenu(undefined); setMenu({ page, x, y }); }} onDropPage={async (pageId, sectionId) => { await window.notes.pages.move(pageId, sectionId, 0); await refresh(); }} />}
     <section className="workspace">
-      <header className="topbar"><button className="sidebar-toggle" onClick={() => setSidebarOpen(!sidebarOpen)} title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}>{sidebarOpen ? <PanelLeftClose size={17} /> : <PanelLeftOpen size={17} />}</button><div className="history-buttons"><button disabled={!canGoBack} title="Back" aria-label="Back" onClick={() => void movePageHistory(-1)}><ArrowLeft size={16} /></button><button disabled={!canGoForward} title="Forward" aria-label="Forward" onClick={() => void movePageHistory(1)}><ArrowRight size={16} /></button></div><div className="tabs">{tabs.map((tab) => <button key={tab.key} className={`tab ${tab.key === activeKey ? 'active' : ''}`} onClick={() => setActiveKey(tab.key)}><span>{tab.kind === 'internal' ? tab.title : `${tab.document.filename}${tab.document.isDirty ? '  •' : ''}`}</span><i onClick={(e) => { e.stopPropagation(); closeTab(tab.key); }}><X size={13} /></i></button>)}</div><button title="New note" onClick={() => void createPage()}><Plus size={17} /></button><button title="Settings" onClick={() => setSettingsOpen(true)}><SettingsIcon size={16} /></button></header>
+      <header className="topbar"><button className="sidebar-toggle" onClick={() => setSidebarOpen(!sidebarOpen)} title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}>{sidebarOpen ? <PanelLeftClose size={17} /> : <PanelLeftOpen size={17} />}</button><div className="history-buttons"><button disabled={!canGoBack} title="Back" aria-label="Back" onClick={() => void movePageHistory(-1)}><ArrowLeft size={16} /></button><button disabled={!canGoForward} title="Forward" aria-label="Forward" onClick={() => void movePageHistory(1)}><ArrowRight size={16} /></button></div><div className="tabs">{tabs.map((tab) => <button key={tab.key} className={`tab ${tab.key === activeKey ? 'active' : ''}`} onClick={() => setActiveKey(tab.key)}><span>{tab.kind === 'internal' ? tab.title : `${tab.document.filename}${tab.document.isDirty ? '  •' : ''}`}</span><i onClick={(e) => { e.stopPropagation(); closeTab(tab.key); }}><X size={13} /></i></button>)}</div><button title="New note" onClick={() => void createPage()}><Plus size={17} /></button><button className={markdownExplorerOpen ? 'active' : ''} title="Markdown folder explorer" onClick={toggleMarkdownExplorer}><FolderTree size={16} /></button><button title="Settings" onClick={() => setSettingsOpen(true)}><SettingsIcon size={16} /></button></header>
       {!active && <div className="empty-state"><div className="empty-icon">N</div><h1>Welcome to Notes</h1><p>A quiet place for your ideas, technical notes, and Markdown documents.</p><div><button className="primary" onClick={() => void createPage()}><FilePlus2 size={17} />New note</button><button onClick={() => void openMarkdown()}><FolderOpen size={17} />Open Markdown</button></div></div>}
       {active?.kind === 'internal' && <InternalDocument key={active.pageId} pageId={active.pageId} settings={settings} onTitle={(title) => updateTabTitle(active.key, title)} onSaved={refresh} onOpenPage={(pageId) => void navigateInActiveTab(pageId)} onStructureChange={() => void refresh()} />}
       {active?.kind === 'external' && <ExternalDocumentView key={active.document.path} initial={active.document} onDocumentChange={(doc) => updateExternalTab(active.key, doc)} onOpenLinkedDocument={(sourcePath, href) => void openLinkedMarkdown(sourcePath, href)} />}
     </section>
+    {markdownExplorerOpen && markdownFolder && <MarkdownFolderExplorer tree={markdownFolder} activePath={active?.kind === 'external' ? active.document.path : undefined} onOpen={(path) => void openExplorerFile(path)} onChoose={() => void chooseMarkdownFolder()} onClose={() => setMarkdownExplorerOpen(false)} />}
     {searchOpen && <SearchPalette onClose={() => setSearchOpen(false)} onOpen={(id) => void openPageById(id)} />}
     {settingsOpen && <SettingsDialog settings={settings} onChange={setSettings} onClose={() => setSettingsOpen(false)} />}
     {createDialog?.kind === 'notebook' && <CreateDialog title="New notebook" label="Give this notebook a name. A first section and page will be created automatically." initialValue="New notebook" onCancel={() => setCreateDialog(undefined)} onCreate={async (name) => { const notebook = await window.notes.notebooks.create(name); const section = await window.notes.sections.create(notebook.id, 'Quick Notes'); const page = await window.notes.pages.create(section.id, 'Untitled'); setCreateDialog(undefined); await refresh(); await openPageById(page.id); }} />}

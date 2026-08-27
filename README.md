@@ -2,6 +2,14 @@
 
 A local-first notebook and Markdown reader/editor for macOS and Windows.
 
+## Features
+
+- Organize local notes into notebooks, sections, and linked child pages
+- Open, preview, edit, and save Markdown files
+- Browse every Markdown file in a folder from a collapsible tree
+- Follow relative links between Markdown documents inside Notes
+- Back up the local notes library to a local or synced folder
+
 ## Requirements
 
 - Node.js 22
