@@ -24,7 +24,7 @@ describe('NotesRepository', () => {
     expect(navigation.notebooks[0]?.name).toBe('Work');
     expect(navigation.notebooks[0]?.sections[0]?.pages[0]?.title).toBe('AWS Ingestion Control Table');
     const migration = repository!.db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get() as { version: number };
-    expect(migration.version).toBe(3);
+    expect(migration.version).toBe(4);
   });
 
   it('supports notebook, section, and page CRUD with autosave content', () => {
@@ -96,6 +96,19 @@ describe('NotesRepository', () => {
     expect(repository!.navigation().notebooks[0].sections[0].pages.some((item) => item.id === child.id)).toBe(false);
     expect(repository!.navigation().recent.some((item) => item.id === child.id)).toBe(false);
     expect(repository!.getPage(child.id).title).toBe('Inline child');
+  });
+
+  it('tracks daily tasks independently from notes', () => {
+    const first = repository!.createTask('Review ingestion alerts', '2026-08-27');
+    const second = repository!.createTask('Prepare stand-up notes', '2026-08-27');
+    expect(repository!.tasksForDate('2026-08-27')).toHaveLength(2);
+    expect(repository!.updateTask(first.id, { status: 'in_progress' })).toMatchObject({ status: 'in_progress', completedAt: null });
+    expect(repository!.updateTask(first.id, { status: 'done' }).completedAt).toBeTruthy();
+    repository!.updateTask(second.id, { title: 'Prepare daily update', taskDate: '2026-08-28' });
+    expect(repository!.tasksForDate('2026-08-27')).toEqual([expect.objectContaining({ id: first.id, status: 'done' })]);
+    expect(repository!.tasksForDate('2026-08-28')[0]).toMatchObject({ id: second.id, title: 'Prepare daily update' });
+    repository!.removeTask(first.id);
+    expect(repository!.tasksForDate('2026-08-27')).toHaveLength(0);
   });
 
   it('persists settings, recent file modes, and external recovery drafts', () => {

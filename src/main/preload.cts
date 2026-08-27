@@ -26,6 +26,12 @@ const api: NotesApi = {
     move: (id, sectionId, position) => invoke('pages:move', id, sectionId, position),
   },
   search: { full: (query) => invoke('search:full', query), quick: (query) => invoke('search:quick', query) },
+  tasks: {
+    list: (taskDate) => invoke('tasks:list', taskDate),
+    create: (title, taskDate) => invoke('tasks:create', title, taskDate),
+    update: (id, patch) => invoke('tasks:update', id, patch),
+    remove: (id) => invoke('tasks:remove', id),
+  },
   files: {
     openMarkdown: (path) => invoke('files:open', path),
     openLinkedMarkdown: (sourcePath, href) => invoke('files:open-linked', sourcePath, href),

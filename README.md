@@ -13,6 +13,8 @@ A local-first notebook and Markdown reader/editor for macOS and Windows.
 - Move between linked pages or adjacent open tabs with the back and forward arrows
 - Resize the notebook and Markdown Explorer panels, use clickable breadcrumbs, and enter focus mode
 - Find any open document from the polished all-tabs menu
+- Plan each day in a dedicated Tasks workspace with To do, In progress, and Done states
+- Rename, reschedule, complete, and track progress for tasks without creating note tabs
 - Create a backup from the top toolbar and automatically back up every hour
 - Back up the local notes library to a local or synced folder
 

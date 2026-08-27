@@ -24,6 +24,13 @@ Recovered external-file drafts can be discarded reliably, which clears the persi
 
 Direct cloud accounts, live multi-device editing, collaboration, AI, databases, canvases, and other generalized productivity features are intentionally excluded. Disaster recovery is included through portable `.notesbackup` archives. Users can place these archives in OneDrive or Google Drive desktop-synced folders without giving Notes cloud credentials.
 
+## Daily tasks
+
+- Tasks are a first-class workspace mode and do not appear as note or Markdown tabs.
+- Each task belongs to a calendar day and has a To do, In progress, or Done status.
+- The daily view supports quick entry, inline renaming, rescheduling, deletion, and at-a-glance completion progress.
+- Tasks are stored in the same local SQLite library as notes, so normal scheduled backups protect them automatically.
+
 ## Backup and recovery
 
 - A backup is one compressed, integrity-checked file containing a consistent SQLite snapshot, settings, drafts, and all managed attachments.

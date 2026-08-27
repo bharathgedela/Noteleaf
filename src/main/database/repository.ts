@@ -9,6 +9,8 @@ import type {
   PageSummary,
   SearchResult,
   SectionTree,
+  TaskItem,
+  TaskStatus,
 } from '../../shared/types.js';
 import { runMigrations } from './migrations.js';
 
@@ -44,6 +46,14 @@ function page(row: Row): Page {
   return {
     ...summary(row), contentHtml: String(row.content_html),
     contentMarkdown: String(row.content_markdown), createdAt: String(row.created_at),
+  };
+}
+function task(row: Row): TaskItem {
+  return {
+    id: String(row.id), title: String(row.title), taskDate: String(row.task_date),
+    status: String(row.status) as TaskStatus, position: Number(row.position),
+    createdAt: String(row.created_at), updatedAt: String(row.updated_at),
+    completedAt: row.completed_at ? String(row.completed_at) : null,
   };
 }
 
@@ -156,6 +166,29 @@ export class NotesRepository {
       this.db.prepare('UPDATE pages SET section_id = ?, position = ?, updated_at = ? WHERE id = ?').run(sectionId, position, now(), id);
     })();
   }
+
+  tasksForDate(taskDate: string): TaskItem[] {
+    return (this.db.prepare(`SELECT * FROM tasks WHERE task_date = ?
+      ORDER BY CASE status WHEN 'todo' THEN 0 WHEN 'in_progress' THEN 1 ELSE 2 END, position, created_at`).all(taskDate) as Row[]).map(task);
+  }
+  createTask(title: string, taskDate: string): TaskItem {
+    const id = randomUUID(); const timestamp = now();
+    const position = (this.db.prepare('SELECT COALESCE(MAX(position), -1) + 1 AS position FROM tasks WHERE task_date = ?').get(taskDate) as { position: number }).position;
+    this.db.prepare(`INSERT INTO tasks(id, title, task_date, status, position, created_at, updated_at)
+      VALUES (?, ?, ?, 'todo', ?, ?, ?)`).run(id, title, taskDate, position, timestamp, timestamp);
+    return task(this.db.prepare('SELECT * FROM tasks WHERE id = ?').get(id) as Row);
+  }
+  updateTask(id: string, patch: { title?: string; taskDate?: string; status?: TaskStatus }): TaskItem {
+    const existing = this.db.prepare('SELECT * FROM tasks WHERE id = ?').get(id) as Row | undefined;
+    if (!existing) throw new Error('Task not found');
+    const title = patch.title ?? String(existing.title);
+    const taskDate = patch.taskDate ?? String(existing.task_date);
+    const status = patch.status ?? String(existing.status) as TaskStatus;
+    const completedAt = status === 'done' ? (existing.completed_at || now()) : null;
+    this.db.prepare('UPDATE tasks SET title = ?, task_date = ?, status = ?, updated_at = ?, completed_at = ? WHERE id = ?').run(title, taskDate, status, now(), completedAt, id);
+    return task(this.db.prepare('SELECT * FROM tasks WHERE id = ?').get(id) as Row);
+  }
+  removeTask(id: string): void { this.db.prepare('DELETE FROM tasks WHERE id = ?').run(id); }
 
   fullSearch(query: string): SearchResult[] {
     const terms = query.trim().split(/\s+/).filter(Boolean).slice(0, 8).map((t) => `"${t.replaceAll('"', '""')}"*`).join(' AND ');

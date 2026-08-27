@@ -3,6 +3,18 @@ export type ThemePreference = 'light' | 'dark' | 'system';
 export type MarkdownViewMode = 'preview' | 'edit' | 'split';
 export type SaveState = 'saved' | 'saving' | 'unsaved' | 'error';
 export type BackupFrequency = 'off' | 'hourly' | 'daily' | 'weekly';
+export type TaskStatus = 'todo' | 'in_progress' | 'done';
+
+export interface TaskItem {
+  id: Id;
+  title: string;
+  taskDate: string;
+  status: TaskStatus;
+  position: number;
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+}
 
 export interface BackupInfo {
   path: string;
@@ -137,6 +149,12 @@ export interface NotesApi {
   search: {
     full(query: string): Promise<SearchResult[]>;
     quick(query: string): Promise<PageSummary[]>;
+  };
+  tasks: {
+    list(taskDate: string): Promise<TaskItem[]>;
+    create(title: string, taskDate: string): Promise<TaskItem>;
+    update(id: Id, patch: { title?: string; taskDate?: string; status?: TaskStatus }): Promise<TaskItem>;
+    remove(id: Id): Promise<void>;
   };
   files: {
     openMarkdown(path?: string): Promise<ExternalDocument | null>;

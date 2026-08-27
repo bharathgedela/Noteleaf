@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, CheckCircle2, ChevronDown, ChevronRight, Clock3, CloudUpload, FilePlus2, FileText, Folder, FolderOpen, FolderTree, Keyboard, Lightbulb, List, LoaderCircle, Maximize2, Minimize2, PanelLeftClose, PanelLeftOpen, Plus, RefreshCw, Rocket, Settings as SettingsIcon, X } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, ChevronDown, ChevronRight, ClipboardList, Clock3, CloudUpload, FilePlus2, FileText, Folder, FolderOpen, FolderTree, Keyboard, Lightbulb, List, LoaderCircle, Maximize2, Minimize2, PanelLeftClose, PanelLeftOpen, Plus, RefreshCw, Rocket, Settings as SettingsIcon, X } from 'lucide-react';
 import type { AppSettings, BackupStatus, ExternalDocument, MarkdownFolderEntry, MarkdownFolderTree, NavigationData, NotebookTree, Page, PageSummary, SaveState, SearchResult, SectionTree } from '../../shared/types';
 import { Sidebar } from '../sidebar/Sidebar';
 import { RichEditor } from '../editor/RichEditor';
 import { MarkdownPreview } from '../markdown/MarkdownPreview';
+import { TaskWorkspace } from '../tasks/TaskWorkspace';
 
 const EMPTY_NAV: NavigationData = { notebooks: [], favorites: [], recent: [], trash: [] };
 const DEFAULT_SETTINGS: AppSettings = { theme: 'light', editorFontSize: 16, codeFontSize: 14, lineWidth: 880, spellcheck: true, defaultMarkdownMode: 'preview', reopenPreviousSession: true, backupFolder: '', backupFrequency: 'hourly', backupRetention: 10, lastBackupAt: null, lastBackupError: null };
@@ -224,6 +225,7 @@ export function App() {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [tabs, setTabs] = useState<Tab[]>([]);
   const [activeKey, setActiveKey] = useState<string>();
+  const [workspaceMode, setWorkspaceMode] = useState<'documents' | 'tasks'>('documents');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(() => storedWidth('notes.sidebarWidth', 260));
   const [explorerWidth, setExplorerWidth] = useState(() => storedWidth('notes.explorerWidth', 300));
@@ -265,10 +267,10 @@ export function App() {
         const page = await window.notes.pages.get(pageId);
         setTabs((before) => before.map((tab) => tab.key === existing.key && tab.kind === 'internal' ? { ...tab, pageId, title: page.title, history: [...tab.history.slice(0, tab.historyIndex + 1), pageId], historyIndex: tab.historyIndex + 1 } : tab));
       }
-      setActiveKey(existing.key); setSearchOpen(false); return;
+      setActiveKey(existing.key); setWorkspaceMode('documents'); setSearchOpen(false); return;
     }
     const page = await window.notes.pages.get(pageId); const tab: Tab = { kind: 'internal', key: `page:${page.id}`, pageId: page.id, title: page.title, history: [page.id], historyIndex: 0 };
-    setTabs((before) => [...before, tab]); setActiveKey(tab.key); setSearchOpen(false); void refresh();
+    setTabs((before) => [...before, tab]); setActiveKey(tab.key); setWorkspaceMode('documents'); setSearchOpen(false); void refresh();
   }, [tabs, refresh]);
   const navigateInActiveTab = useCallback(async (pageId: string) => {
     const current = tabs.find((tab) => tab.key === activeKey);
@@ -296,7 +298,7 @@ export function App() {
   const openExternal = useCallback((document: ExternalDocument) => {
     const key = `file:${document.path.toLowerCase()}`;
     setTabs((before) => { const found = before.findIndex((tab) => tab.key === key); if (found >= 0) { const current = before[found]; if (current.kind === 'external' && current.document.isDirty) return before; return before.map((tab) => tab.key === key ? { kind: 'external', key, document } : tab); } return [...before, { kind: 'external', key, document }]; });
-    setActiveKey(key);
+    setActiveKey(key); setWorkspaceMode('documents');
   }, []);
   const chooseMarkdownFolder = useCallback(async () => {
     const tree = await window.notes.files.openMarkdownFolder();
@@ -358,8 +360,8 @@ export function App() {
   useEffect(() => window.notes.events.onOpenExternal(openExternal), [openExternal]);
   const active = tabs.find((tab) => tab.key === activeKey);
   const activeTabIndex = tabs.findIndex((tab) => tab.key === activeKey);
-  const canGoBack = (active?.kind === 'internal' && active.historyIndex > 0) || activeTabIndex > 0;
-  const canGoForward = (active?.kind === 'internal' && active.historyIndex < active.history.length - 1) || (activeTabIndex >= 0 && activeTabIndex < tabs.length - 1);
+  const canGoBack = workspaceMode === 'documents' && ((active?.kind === 'internal' && active.historyIndex > 0) || activeTabIndex > 0);
+  const canGoForward = workspaceMode === 'documents' && ((active?.kind === 'internal' && active.historyIndex < active.history.length - 1) || (activeTabIndex >= 0 && activeTabIndex < tabs.length - 1));
   const moveWorkspaceHistory = useCallback(async (direction: -1 | 1) => {
     const current = tabs.find((tab) => tab.key === activeKey);
     if (!current) return;
@@ -493,16 +495,18 @@ export function App() {
       <header className="topbar">
         <button className="sidebar-toggle" onClick={() => focusMode ? setFocusMode(false) : setSidebarOpen(!sidebarOpen)} title={sidebarVisible ? 'Hide sidebar' : 'Show sidebar'}>{sidebarVisible ? <PanelLeftClose size={17} /> : <PanelLeftOpen size={17} />}</button>
         <div className="history-buttons"><button disabled={!canGoBack} title="Previous page or tab" aria-label="Previous page or tab" onClick={() => void moveWorkspaceHistory(-1)}><ArrowLeft size={16} /></button><button disabled={!canGoForward} title="Next page or tab" aria-label="Next page or tab" onClick={() => void moveWorkspaceHistory(1)}><ArrowRight size={16} /></button></div>
-        <div className="tabs">{tabs.map((tab) => <button key={tab.key} className={`tab ${tab.key === activeKey ? 'active' : ''}`} title={tab.kind === 'internal' ? tab.title : tab.document.path} onClick={() => setActiveKey(tab.key)}><FileText className="tab-icon" size={13} /><span>{tab.kind === 'internal' ? tab.title : tab.document.filename}</span>{tab.kind === 'external' && tab.document.isDirty && <b className="dirty-dot" title="Unsaved changes" />}<i onClick={(e) => { e.stopPropagation(); closeTab(tab.key); }}><X size={13} /></i></button>)}</div>
+        <div className="tabs">{tabs.map((tab) => <button key={tab.key} className={`tab ${workspaceMode === 'documents' && tab.key === activeKey ? 'active' : ''}`} title={tab.kind === 'internal' ? tab.title : tab.document.path} onClick={() => { setActiveKey(tab.key); setWorkspaceMode('documents'); }}><FileText className="tab-icon" size={13} /><span>{tab.kind === 'internal' ? tab.title : tab.document.filename}</span>{tab.kind === 'external' && tab.document.isDirty && <b className="dirty-dot" title="Unsaved changes" />}<i onClick={(e) => { e.stopPropagation(); closeTab(tab.key); }}><X size={13} /></i></button>)}</div>
         {!!tabs.length && <button className={tabsMenuOpen ? 'active' : ''} title="All open tabs" aria-label="All open tabs" onClick={(event) => { event.stopPropagation(); setTabsMenuOpen((value) => !value); }}><List size={16} /></button>}
         <button className="new-note-button" title="New note" onClick={() => void createPage()}><Plus size={17} /><span>New</span></button>
+        <button className={`tasks-button ${workspaceMode === 'tasks' ? 'active' : ''}`} title="Daily tasks" onClick={() => setWorkspaceMode('tasks')}><ClipboardList size={16} /><span>Tasks</span></button>
         <button className={markdownExplorerOpen && !focusMode ? 'active' : ''} title="Markdown folder explorer" onClick={toggleMarkdownExplorer}><FolderTree size={16} /></button>
         <button className={`quick-backup ${backupStatus?.folder ? 'configured' : ''}`} disabled={backupBusy} title={backupStatus?.folder ? `Back up now · Automatic backup ${backupStatus.frequency === 'hourly' ? 'every hour' : backupStatus.frequency}` : 'Configure backup'} onClick={() => void quickBackup()}>{backupBusy ? <LoaderCircle className="spin" size={16} /> : <CloudUpload size={16} />}<span>{backupBusy ? 'Backing up' : 'Backup'}</span></button>
         <button className={focusMode ? 'active' : ''} title={focusMode ? 'Exit focus mode (Ctrl+Shift+F)' : 'Focus mode (Ctrl+Shift+F)'} onClick={() => setFocusMode((value) => !value)}>{focusMode ? <Minimize2 size={16} /> : <Maximize2 size={16} />}</button>
         <button title="Settings" onClick={() => setSettingsOpen(true)}><SettingsIcon size={16} /></button>
       </header>
-      {tabsMenuOpen && <div className="tabs-menu" onClick={(event) => event.stopPropagation()}><header><strong>Open tabs</strong><span>{tabs.length}</span></header>{tabs.map((tab) => <button key={`menu-${tab.key}`} className={tab.key === activeKey ? 'active' : ''} onClick={() => { setActiveKey(tab.key); setTabsMenuOpen(false); }}><FileText size={14} /><span>{tab.kind === 'internal' ? tab.title : tab.document.filename}</span>{tab.kind === 'external' && tab.document.isDirty && <b className="dirty-dot" />}</button>)}</div>}
-      {!active && <main className="home-dashboard">
+      {tabsMenuOpen && <div className="tabs-menu" onClick={(event) => event.stopPropagation()}><header><strong>Open tabs</strong><span>{tabs.length}</span></header>{tabs.map((tab) => <button key={`menu-${tab.key}`} className={workspaceMode === 'documents' && tab.key === activeKey ? 'active' : ''} onClick={() => { setActiveKey(tab.key); setWorkspaceMode('documents'); setTabsMenuOpen(false); }}><FileText size={14} /><span>{tab.kind === 'internal' ? tab.title : tab.document.filename}</span>{tab.kind === 'external' && tab.document.isDirty && <b className="dirty-dot" />}</button>)}</div>}
+      {workspaceMode === 'tasks' && <TaskWorkspace />}
+      {workspaceMode === 'documents' && !active && <main className="home-dashboard">
         <section className="home-hero">
           <div className="hero-orb orb-one" /><div className="hero-orb orb-two" /><div className="hero-orb orb-three" />
           <div className="hero-mark">N</div><h1>Welcome to Notes</h1><p>A colorful, quiet place for your ideas, technical notes,<br />and Markdown documents.</p>
@@ -515,8 +519,8 @@ export function App() {
           <article className="home-card shortcuts-card"><header><span><Keyboard size={16} /></span><div><strong>Shortcuts</strong><small>Move faster around Notes</small></div></header><dl><div><dt>Search</dt><dd>Ctrl P</dd></div><div><dt>Switch tabs</dt><dd>Ctrl Tab</dd></div><div><dt>Focus mode</dt><dd>Ctrl Shift F</dd></div></dl></article>
         </section>
       </main>}
-      {active?.kind === 'internal' && <InternalDocument key={active.pageId} pageId={active.pageId} settings={settings} breadcrumb={activeLocation} onRevealBreadcrumb={revealSidebarItem} onTitle={(title) => updateTabTitle(active.key, title)} onSaved={refresh} onOpenPage={(pageId) => void navigateInActiveTab(pageId)} onStructureChange={() => void refresh()} />}
-      {active?.kind === 'external' && <ExternalDocumentView key={active.document.path} initial={active.document} onDocumentChange={(doc) => updateExternalTab(active.key, doc)} onOpenLinkedDocument={(sourcePath, href) => void openLinkedMarkdown(sourcePath, href)} />}
+      {workspaceMode === 'documents' && active?.kind === 'internal' && <InternalDocument key={active.pageId} pageId={active.pageId} settings={settings} breadcrumb={activeLocation} onRevealBreadcrumb={revealSidebarItem} onTitle={(title) => updateTabTitle(active.key, title)} onSaved={refresh} onOpenPage={(pageId) => void navigateInActiveTab(pageId)} onStructureChange={() => void refresh()} />}
+      {workspaceMode === 'documents' && active?.kind === 'external' && <ExternalDocumentView key={active.document.path} initial={active.document} onDocumentChange={(doc) => updateExternalTab(active.key, doc)} onOpenLinkedDocument={(sourcePath, href) => void openLinkedMarkdown(sourcePath, href)} />}
     </section>
     {explorerVisible && <div className="panel-resizer explorer-resizer" role="separator" aria-label="Resize Markdown Explorer" aria-orientation="vertical" onPointerDown={(event) => startPanelResize(event, 'explorer')} />}
     {explorerVisible && <MarkdownFolderExplorer tree={markdownFolder} width={explorerWidth} activePath={active?.kind === 'external' ? active.document.path : undefined} onOpen={(path) => void openExplorerFile(path)} onChoose={() => void chooseMarkdownFolder()} onClose={() => setMarkdownExplorerOpen(false)} />}

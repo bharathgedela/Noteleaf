@@ -1,5 +1,5 @@
 import { ipcMain, shell } from 'electron';
-import type { AppSettings, BackupFrequency, MarkdownViewMode } from '../shared/types.js';
+import type { AppSettings, BackupFrequency, MarkdownViewMode, TaskStatus } from '../shared/types.js';
 import type { NotesRepository } from './database/repository.js';
 import type { FileService } from './files.js';
 import type { BackupService } from './backup/service.js';
@@ -9,6 +9,7 @@ const CHANNELS = [
   'sections:create', 'sections:rename', 'sections:remove', 'pages:create', 'pages:get',
   'pages:save', 'pages:rename', 'pages:trash', 'pages:restore', 'pages:remove', 'pages:empty-trash',
   'pages:favorite', 'pages:move', 'search:full', 'search:quick', 'files:open',
+  'tasks:list', 'tasks:create', 'tasks:update', 'tasks:remove',
   'files:open-linked', 'files:open-folder', 'files:save', 'files:save-as', 'files:draft', 'files:clear-draft', 'files:import', 'files:export', 'files:recent',
   'files:attachment', 'settings:get', 'settings:update', 'settings:open-data', 'system:open-external',
   'backup:status', 'backup:choose-folder', 'backup:create', 'backup:set-schedule', 'backup:restore', 'backup:open-folder',
@@ -27,6 +28,15 @@ function source(value: unknown, max = 25 * 1024 * 1024): string {
 }
 function viewMode(value: unknown): MarkdownViewMode {
   if (value !== 'preview' && value !== 'edit' && value !== 'split') throw new Error('Invalid view mode');
+  return value;
+}
+function taskDate(value: unknown): string {
+  const date = text(value, 'Task date', 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(new Date(`${date}T00:00:00`).getTime())) throw new Error('Invalid task date');
+  return date;
+}
+function taskStatus(value: unknown): TaskStatus {
+  if (value !== 'todo' && value !== 'in_progress' && value !== 'done') throw new Error('Invalid task status');
   return value;
 }
 
@@ -55,6 +65,14 @@ export function registerIpc(repository: NotesRepository, files: FileService, bac
   ipcMain.handle('pages:move', (_event, rawId, sectionId, position) => repository.movePage(id(rawId), id(sectionId), Math.max(0, Number(position) || 0)));
   ipcMain.handle('search:full', (_event, query) => repository.fullSearch(typeof query === 'string' ? query.slice(0, 300) : ''));
   ipcMain.handle('search:quick', (_event, query) => repository.quickSearch(typeof query === 'string' ? query.slice(0, 300) : ''));
+  ipcMain.handle('tasks:list', (_event, date) => repository.tasksForDate(taskDate(date)));
+  ipcMain.handle('tasks:create', (_event, title, date) => repository.createTask(text(title, 'Task title'), taskDate(date)));
+  ipcMain.handle('tasks:update', (_event, rawId, patch) => repository.updateTask(id(rawId), {
+    title: patch?.title === undefined ? undefined : text(patch.title, 'Task title'),
+    taskDate: patch?.taskDate === undefined ? undefined : taskDate(patch.taskDate),
+    status: patch?.status === undefined ? undefined : taskStatus(patch.status),
+  }));
+  ipcMain.handle('tasks:remove', (_event, rawId) => repository.removeTask(id(rawId)));
   ipcMain.handle('files:open', (_event, path?: string) => files.openMarkdown(path ? text(path, 'Path', 32767) : undefined));
   ipcMain.handle('files:open-linked', (_event, sourcePath, href) => files.openLinkedMarkdown(text(sourcePath, 'Source path', 32767), text(href, 'Link', 32767)));
   ipcMain.handle('files:open-folder', () => files.openMarkdownFolder());
