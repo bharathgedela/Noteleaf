@@ -20,10 +20,17 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-echo "Downloading the latest Noteleaf release..."
-if ! curl --proto '=https' --tlsv1.2 -fsSL "$release_base/$asset_name" -o "$dmg_path" || \
-   ! curl --proto '=https' --tlsv1.2 -fsSL "$release_base/SHA256SUMS.txt" -o "$checksums_path"; then
+echo "Downloading the latest Noteleaf release ($asset_name)..."
+if ! curl --proto '=https' --tlsv1.2 --fail --location --progress-bar \
+  "$release_base/$asset_name" --output "$dmg_path"; then
   echo "A published Noteleaf macOS release could not be downloaded. Check https://github.com/bharathgedela/notes_app/releases and try again." >&2
+  exit 1
+fi
+
+echo "Downloading and verifying the release checksum..."
+if ! curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
+  "$release_base/SHA256SUMS.txt" --output "$checksums_path"; then
+  echo "The Noteleaf release checksum could not be downloaded. Check https://github.com/bharathgedela/notes_app/releases and try again." >&2
   exit 1
 fi
 
