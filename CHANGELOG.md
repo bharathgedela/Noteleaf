@@ -2,6 +2,11 @@
 
 All notable changes to Noteleaf are documented here.
 
+## 1.0.3 — 2026-08-28
+
+- Fixes tagged release packaging by preventing Electron Builder from attempting an implicit publish in each platform job; one dedicated workflow job now publishes the verified artifacts.
+- Updates the GitHub checkout and Node setup actions to their Node 24-compatible major versions.
+
 ## 1.0.2 — 2026-08-28
 
 - Adds linked Markdown shortcuts to notebook sections, preserving the source file and its relative links instead of copying rendered content into an internal page.
