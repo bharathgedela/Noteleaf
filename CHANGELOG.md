@@ -2,6 +2,12 @@
 
 All notable changes to Noteleaf are documented here.
 
+## 1.0.1 — 2026-08-28
+
+- Reworks the Noteleaf icon with a deep emerald tile, warm off-white page, and saturated green leaf for strong contrast in the Windows taskbar and macOS Dock.
+- Enlarges and simplifies the central mark so it remains recognizable at 16–32 px.
+- Preserves source aspect ratio while generating Windows PNG/ICO and macOS PNG icon sizes.
+
 ## 1.0.0 — 2026-08-28
 
 First public Noteleaf release.

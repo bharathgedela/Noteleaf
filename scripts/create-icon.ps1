@@ -26,7 +26,12 @@ function New-ResizedPngBytes {
     $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
     $graphics.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
     $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
-    $graphics.DrawImage($Source, [System.Drawing.Rectangle]::new(0, 0, $Size, $Size))
+    $scale = [Math]::Min($Size / $Source.Width, $Size / $Source.Height)
+    $width = [Math]::Max(1, [int][Math]::Round($Source.Width * $scale))
+    $height = [Math]::Max(1, [int][Math]::Round($Source.Height * $scale))
+    $x = [int][Math]::Floor(($Size - $width) / 2)
+    $y = [int][Math]::Floor(($Size - $height) / 2)
+    $graphics.DrawImage($Source, [System.Drawing.Rectangle]::new($x, $y, $width, $height))
     $stream = [System.IO.MemoryStream]::new()
     try {
       $bitmap.Save($stream, [System.Drawing.Imaging.ImageFormat]::Png)
