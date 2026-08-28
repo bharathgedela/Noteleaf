@@ -164,26 +164,26 @@ kbd { padding: 2px 5px; border: 1px solid var(--border-strong); border-radius: 4
 .home-card header { display: flex; align-items: center; gap: 10px; margin-bottom: 17px; }
 .home-card header > span { width: 31px; height: 31px; display: grid; flex: none; place-items: center; border-radius: 50%; background: var(--card-color); color: #fff; box-shadow: 0 4px 10px color-mix(in srgb, var(--card-color) 28%, transparent); }
 .home-card header div { min-width: 0; }
-.home-card header strong { display: block; color: #26334b; font-size: 13px; }
-.home-card header small { display: block; margin-top: 2px; color: var(--faint); font-size: 9px; }
+.home-card header strong { display: block; color: #26334b; font-size: 14.5px; }
+.home-card header small { display: block; margin-top: 3px; color: var(--faint); font-size: 10.5px; line-height: 1.35; }
 .recent-card { --card-color: #36a85f; --card-soft: #f3fbf5; --card-border: #d8ebdc; }
 .tips-card { --card-color: #5279ee; --card-soft: #f3f6ff; --card-border: #dbe3ff; }
 .quick-card { --card-color: #12a6a0; --card-soft: #f0fbfa; --card-border: #d4ecea; }
 .shortcuts-card { --card-color: #f17c35; --card-soft: #fff8f2; --card-border: #f2dfcf; }
 .recent-card-list { flex: 1; }
-.recent-card-list > button, .quick-card-actions button { width: 100%; display: flex; align-items: center; gap: 7px; border: 0; border-radius: 5px; padding: 5px 2px; background: transparent; color: #536178; cursor: pointer; font-size: 10px; text-align: left; }
+.recent-card-list > button, .quick-card-actions button { width: 100%; display: flex; align-items: center; gap: 7px; border: 0; border-radius: 5px; padding: 6px 2px; background: transparent; color: #536178; cursor: pointer; font-size: 11.5px; line-height: 1.35; text-align: left; }
 .recent-card-list > button:hover, .quick-card-actions button:hover { background: rgba(255,255,255,.7); color: #172033; }
 .recent-card-list > button span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.recent-card-list > button small { color: var(--faint); font-size: 8px; }
-.recent-card-list > p { color: var(--faint); font-size: 10px; line-height: 1.5; }
-.home-card ul { flex: 1; margin: 0; padding-left: 17px; color: #66738a; font-size: 10px; line-height: 1.7; }
-.home-card ul kbd { font-size: 8px; }
-.card-link { width: max-content; display: flex; align-items: center; gap: 5px; border: 0; padding: 4px 0; background: transparent; color: var(--card-color); cursor: pointer; font-size: 10px; font-weight: 600; }
+.recent-card-list > button small { color: var(--faint); font-size: 9.5px; }
+.recent-card-list > p { color: var(--faint); font-size: 11.5px; line-height: 1.5; }
+.home-card ul { flex: 1; margin: 0; padding-left: 18px; color: #66738a; font-size: 11.5px; line-height: 1.75; }
+.home-card ul kbd { font-size: 9.5px; }
+.card-link { width: max-content; display: flex; align-items: center; gap: 5px; border: 0; padding: 4px 0; background: transparent; color: var(--card-color); cursor: pointer; font-size: 11.5px; font-weight: 600; }
 .quick-card-actions { display: flex; flex-direction: column; gap: 4px; }
 .quick-card-actions button svg { color: var(--card-color); }
 .shortcuts-card dl { display: flex; flex-direction: column; gap: 9px; margin: 0; }
-.shortcuts-card dl div { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: #66738a; font-size: 10px; }
-.shortcuts-card dd { margin: 0; border: 1px solid #ecd9c8; border-radius: 5px; padding: 3px 6px; background: rgba(255,255,255,.7); color: #af5b28; font: 9px var(--mono-font); }
+.shortcuts-card dl div { display: flex; align-items: center; justify-content: space-between; gap: 10px; color: #66738a; font-size: 11.5px; }
+.shortcuts-card dd { margin: 0; border: 1px solid #ecd9c8; border-radius: 5px; padding: 3px 6px; background: rgba(255,255,255,.7); color: #af5b28; font: 10.5px var(--mono-font); }
 
 .tasks-workspace { min-height: 0; flex: 1; overflow-y: auto; padding: 28px clamp(22px, 4vw, 56px) 60px; background: radial-gradient(circle at 92% 5%, rgba(96,165,250,.12), transparent 28%), radial-gradient(circle at 3% 35%, rgba(52,211,153,.1), transparent 24%), linear-gradient(145deg, #f7fcfa, #fbfcff 55%, #f7faff); }
 .tasks-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; max-width: 1280px; margin: 0 auto 22px; }
