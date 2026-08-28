@@ -97,7 +97,7 @@ export async function extractArchive(archive: string, destination: string): Prom
     try {
       const magic = Buffer.alloc(Buffer.byteLength(MAGIC));
       const first = await handle.read(magic, 0, magic.length, 0);
-      if (first.bytesRead !== magic.length || magic.toString('utf8') !== MAGIC) throw new Error('This is not a supported Notes backup.');
+      if (first.bytesRead !== magic.length || magic.toString('utf8') !== MAGIC) throw new Error('This is not a supported Noteleaf backup.');
       let offset = magic.length;
       let entries = 0;
       while (true) {

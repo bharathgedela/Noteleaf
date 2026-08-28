@@ -1,9 +1,19 @@
 {
-  "name": "notes-desktop",
-  "version": "0.5.2",
+  "name": "noteleaf-desktop",
+  "version": "1.0.0",
   "private": true,
   "author": "Bharath Kumar Gedela",
-  "description": "A calm, local-first notebook and Markdown reader for macOS and Windows.",
+  "license": "Apache-2.0",
+  "description": "A polished, local-first notebook, task tracker, and Markdown workspace for macOS and Windows.",
+  "homepage": "https://github.com/bharathgedela/notes_app#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/bharathgedela/notes_app.git"
+  },
+  "bugs": {
+    "url": "https://github.com/bharathgedela/notes_app/issues"
+  },
+  "keywords": ["noteleaf", "notes", "markdown", "electron", "local-first"],
   "type": "module",
   "main": "dist/main/index.js",
   "scripts": {
@@ -14,6 +24,9 @@
     "lint": "eslint . --max-warnings=0",
     "test": "node scripts/run-tests.mjs",
     "test:watch": "vitest --config vitest.config.ts",
+    "license:audit": "node scripts/audit-licenses.mjs",
+    "license:notices": "node scripts/generate-third-party-notices.mjs",
+    "icons": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-icon.ps1",
     "start": "electron .",
     "postinstall": "electron-rebuild -f -w better-sqlite3",
     "dist:mac": "npm run build && electron-builder --mac dmg zip --arm64",
@@ -79,14 +92,25 @@
     "wait-on": "^8.0.4"
   },
   "build": {
-    "appId": "com.local.notes",
-    "productName": "Notes",
+    "appId": "io.github.bharathgedela.noteleaf",
+    "productName": "Noteleaf",
+    "copyright": "Copyright © 2026 Bharath Kumar Gedela",
     "directories": {
       "output": "release"
     },
     "files": [
       "dist/**/*",
-      "package.json"
+      "package.json",
+      "LICENSE",
+      "NOTICE",
+      "THIRD_PARTY_NOTICES.md",
+      "THIRD_PARTY_LICENSES.txt"
+    ],
+    "extraResources": [
+      { "from": "LICENSE", "to": "licenses/LICENSE" },
+      { "from": "NOTICE", "to": "licenses/NOTICE" },
+      { "from": "THIRD_PARTY_NOTICES.md", "to": "licenses/THIRD_PARTY_NOTICES.md" },
+      { "from": "THIRD_PARTY_LICENSES.txt", "to": "licenses/THIRD_PARTY_LICENSES.txt" }
     ],
     "asarUnpack": [
       "node_modules/better-sqlite3/**/*"
@@ -107,7 +131,7 @@
     "mac": {
       "icon": "assets/icon-mac.png",
       "category": "public.app-category.productivity",
-      "artifactName": "Notes-${version}-${arch}.${ext}"
+      "artifactName": "Noteleaf-${version}-${arch}.${ext}"
     },
     "win": {
       "icon": "assets/icon.ico",
@@ -119,7 +143,7 @@
           ]
         }
       ],
-      "artifactName": "Notes-${version}-Setup.${ext}"
+      "artifactName": "Noteleaf-${version}-Setup.${ext}"
     },
     "nsis": {
       "oneClick": false,

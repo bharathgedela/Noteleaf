@@ -7,8 +7,9 @@ import { NotesRepository } from './database/repository.js';
 import { FileService } from './files.js';
 import { registerIpc } from './ipc.js';
 import { applyPendingRestore, BackupService } from './backup/service.js';
+import { migrateLegacyAppData } from './app-data.js';
 
-const APP_NAME = 'Notes';
+const APP_NAME = 'Noteleaf';
 const mainDirectory = fileURLToPath(new URL('.', import.meta.url));
 let window: BrowserWindow | null = null;
 let repository: NotesRepository | null = null;
@@ -114,9 +115,10 @@ else {
   });
   app.on('open-file', (event, path) => { event.preventDefault(); void dispatchExternal(path); });
   app.whenReady().then(async () => {
-    startupLog('Application ready');
     const dataDirectory = app.getPath('userData');
+    migrateLegacyAppData(app.getPath('appData'), dataDirectory);
     mkdirSync(dataDirectory, { recursive: true });
+    startupLog('Application ready');
     await applyPendingRestore(dataDirectory);
     repository = new NotesRepository(join(dataDirectory, 'notes.db'));
     startupLog('Database opened');
@@ -139,7 +141,7 @@ else {
     startupLog('Startup complete');
   }).catch((error: unknown) => {
     startupLog('Startup failed', error);
-    dialog.showErrorBox('Notes could not start', error instanceof Error ? error.message : 'An unexpected startup error occurred.');
+    dialog.showErrorBox('Noteleaf could not start', error instanceof Error ? error.message : 'An unexpected startup error occurred.');
     app.quit();
   });
 }

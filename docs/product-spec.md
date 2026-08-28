@@ -2,13 +2,13 @@
 
 ## First-run experience
 
-A new empty library starts with one **Welcome** notebook, a **Getting Started** section, and a **Welcome to Notes** guide. The guide introduces organization, rich editing, linked pages, Markdown folders, daily Tasks, drag ordering, keyboard shortcuts, Trash, and hourly backups. It includes feature and shortcut tables plus a first-five-minutes checklist. Existing libraries are never replaced or modified by the seed.
+A new empty library starts with one **Welcome** notebook, a **Getting Started** section, and a **Welcome to Noteleaf** guide. The guide introduces organization, rich editing, linked pages, Markdown folders, daily Tasks, drag ordering, platform-specific keyboard shortcuts, Trash, and hourly backups. It includes feature and shortcut tables plus a first-five-minutes checklist. Existing libraries are never replaced or modified by the seed.
 
 The V1 product is a calm macOS and Windows notebook and Markdown reader/editor. Its primary layout is a compact hierarchical sidebar plus a readable document surface. The app supports notebooks, sections, pages, soft deletion, favorites, recents, autosave, global search, and external Markdown in Preview, Edit, and Split modes.
 
-The visual system prioritizes Segoe UI typography, whitespace, a restrained neutral palette, an 880px reading column, strong Markdown rhythm, and clearly separated code blocks. Light mode is primary; dark and system themes remain tasteful and low contrast.
+The visual system uses Noteleaf's original mint page-and-leaf identity, a platform-aware system type stack, whitespace, a restrained neutral palette, an 880px reading column, strong Markdown rhythm, and clearly separated code blocks. Light mode is primary; dark and system themes remain tasteful and low contrast.
 
-The workspace uses resizable notebook and Markdown Explorer panels whose widths persist locally. Tabs use compact document icons, clear active and unsaved states, and an all-tabs menu for crowded workspaces. Internal notes show clickable notebook and section breadcrumbs. Focus mode temporarily hides both side panels and can be toggled with Ctrl+Shift+F.
+The workspace uses resizable notebook and Markdown Explorer panels whose widths persist locally. Tabs use compact document icons, clear active and unsaved states, and an all-tabs menu for crowded workspaces. Internal notes show clickable notebook and section breadcrumbs. Focus mode temporarily hides both side panels and can be toggled with Ctrl+Shift+F on Windows or Command+Shift+F on macOS.
 
 Pages created explicitly with a section's `+` control are sidebar pages. Pages created with the editor's `/ → Page` command prompt for a name and become inline child pages: that name is both the page heading and inline link text. Child pages remain stored inside the same notebook and are searchable and backed up, but they do not appear in the section tree, Favorites, Recent, or Trash. Following an internal page link navigates within the current tab; Back and Forward return through that tab's page history.
 
@@ -20,13 +20,13 @@ Slash commands are keyboard-first. Typing `/` opens a searchable command menu; c
 
 Code blocks support explicit link marks in Edit mode. HTTP and HTTPS URLs inside code blocks are also detected and clickable in Read mode, where they open through the operating system browser.
 
-Markdown documents opened from disk support links to other Markdown files. Relative paths are resolved from the current document's folder, URL-encoded filenames and heading fragments are accepted, and the target opens or activates as another tab inside Notes. Missing, moved, non-Markdown, and unsupported links show a clear error instead of opening an unsafe path.
+Markdown documents opened from disk support links to other Markdown files. Relative paths are resolved from the current document's folder, URL-encoded filenames and heading fragments are accepted, and the target opens or activates as another tab inside Noteleaf. Missing, moved, non-Markdown, and unsupported links show a clear error instead of opening an unsafe path.
 
-The collapsible Markdown Explorer appears on the right side of the workspace. Users can choose a folder from the toolbar or File menu; Notes scans it recursively, skips generated/dependency folders, and presents all supported Markdown files in an expandable VS Code-style tree. Clicking a file opens or activates it as a Notes tab without replacing unsaved edits in an already-open tab.
+The collapsible Markdown Explorer appears on the right side of the workspace. Users can choose a folder from the toolbar or File menu; Noteleaf scans it recursively, skips generated/dependency folders, and presents all supported Markdown files in an expandable VS Code-style tree. Clicking a file opens or activates it as a Noteleaf tab without replacing unsaved edits in an already-open tab.
 
 Recovered external-file drafts can be discarded reliably, which clears the persisted draft, restores the on-disk content, and closes the recovery banner. The banner also has a separate close control that keeps the recovered text while dismissing the message.
 
-Direct cloud accounts, live multi-device editing, collaboration, AI, databases, canvases, and other generalized productivity features are intentionally excluded. Disaster recovery is included through portable `.notesbackup` archives. Users can place these archives in OneDrive or Google Drive desktop-synced folders without giving Notes cloud credentials.
+Direct cloud accounts, live multi-device editing, collaboration, AI, databases, canvases, and other generalized productivity features are intentionally excluded. Disaster recovery is included through portable `.notesbackup` archives. Users can place these archives in OneDrive or Google Drive desktop-synced folders without giving Noteleaf cloud credentials.
 
 ## Daily tasks
 
@@ -38,9 +38,9 @@ Direct cloud accounts, live multi-device editing, collaboration, AI, databases, 
 ## Backup and recovery
 
 - A backup is one compressed, integrity-checked file containing a consistent SQLite snapshot, settings, drafts, and all managed attachments.
-- Users can create a backup immediately or schedule it hourly, daily, or weekly while Notes is running.
+- Users can create a backup immediately or schedule it hourly, daily, or weekly while Noteleaf is running.
 - The top toolbar includes a one-click backup action with progress and completion notifications.
-- Newly configured backup folders default to automatic hourly backups while Notes is running; hourly, daily, weekly, and off remain available in Settings.
-- Retention is configurable from 5 to 50 backups; only files created by Notes are eligible for cleanup.
+- Newly configured backup folders default to automatic hourly backups while Noteleaf is running; hourly, daily, weekly, and off remain available in Settings.
+- Retention is configurable from 5 to 50 backups; only files created by Noteleaf or a compatible pre-1.0 Notes version are eligible for cleanup.
 - Restore validates the archive and its database, creates a safety backup of the current library, then restarts and applies the replacement before SQLite opens.
 - Backup folder detection labels OneDrive, Google Drive, and ordinary local folders. Cloud transfer is performed by the provider's desktop sync client.

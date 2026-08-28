@@ -1,57 +1,81 @@
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Drawing
 
-$assetDirectory = Join-Path $PSScriptRoot '..\assets'
-[System.IO.Directory]::CreateDirectory($assetDirectory) | Out-Null
-$pngPath = Join-Path $assetDirectory 'icon.png'
+$assetDirectory = [System.IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..\assets'))
+$sourcePath = Join-Path $assetDirectory 'noteleaf-logo.png'
+$windowsPngPath = Join-Path $assetDirectory 'icon.png'
+$macPngPath = Join-Path $assetDirectory 'icon-mac.png'
 $icoPath = Join-Path $assetDirectory 'icon.ico'
 
-$bitmap = [System.Drawing.Bitmap]::new(256, 256)
-$graphics = [System.Drawing.Graphics]::FromImage($bitmap)
-$graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
-$graphics.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::AntiAliasGridFit
-$graphics.Clear([System.Drawing.Color]::Transparent)
+if (-not (Test-Path -LiteralPath $sourcePath)) {
+  throw "Missing master logo: $sourcePath"
+}
 
-$path = [System.Drawing.Drawing2D.GraphicsPath]::new()
-$radius = 52
-$diameter = $radius * 2
-$path.AddArc(12, 12, $diameter, $diameter, 180, 90)
-$path.AddArc(244 - $diameter, 12, $diameter, $diameter, 270, 90)
-$path.AddArc(244 - $diameter, 244 - $diameter, $diameter, $diameter, 0, 90)
-$path.AddArc(12, 244 - $diameter, $diameter, $diameter, 90, 90)
-$path.CloseFigure()
+function New-ResizedPngBytes {
+  param(
+    [Parameter(Mandatory)] [System.Drawing.Image] $Source,
+    [Parameter(Mandatory)] [int] $Size
+  )
 
-$background = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(255, 51, 67, 62))
-$graphics.FillPath($background, $path)
-$font = [System.Drawing.Font]::new('Georgia', 132, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Pixel)
-$format = [System.Drawing.StringFormat]::new()
-$format.Alignment = [System.Drawing.StringAlignment]::Center
-$format.LineAlignment = [System.Drawing.StringAlignment]::Center
-$foreground = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::White)
-$graphics.DrawString('N', $font, $foreground, [System.Drawing.RectangleF]::new(0, -3, 256, 256), $format)
-$bitmap.Save($pngPath, [System.Drawing.Imaging.ImageFormat]::Png)
+  $bitmap = [System.Drawing.Bitmap]::new($Size, $Size, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+  $graphics = [System.Drawing.Graphics]::FromImage($bitmap)
+  try {
+    $graphics.Clear([System.Drawing.Color]::Transparent)
+    $graphics.CompositingMode = [System.Drawing.Drawing2D.CompositingMode]::SourceCopy
+    $graphics.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuality
+    $graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+    $graphics.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQuality
+    $graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::HighQuality
+    $graphics.DrawImage($Source, [System.Drawing.Rectangle]::new(0, 0, $Size, $Size))
+    $stream = [System.IO.MemoryStream]::new()
+    try {
+      $bitmap.Save($stream, [System.Drawing.Imaging.ImageFormat]::Png)
+      return ,$stream.ToArray()
+    } finally {
+      $stream.Dispose()
+    }
+  } finally {
+    $graphics.Dispose()
+    $bitmap.Dispose()
+  }
+}
 
-$pngBytes = [System.IO.File]::ReadAllBytes($pngPath)
-$stream = [System.IO.File]::Create($icoPath)
-$writer = [System.IO.BinaryWriter]::new($stream)
-$writer.Write([UInt16]0)
-$writer.Write([UInt16]1)
-$writer.Write([UInt16]1)
-$writer.Write([Byte]0)
-$writer.Write([Byte]0)
-$writer.Write([Byte]0)
-$writer.Write([Byte]0)
-$writer.Write([UInt16]1)
-$writer.Write([UInt16]32)
-$writer.Write([UInt32]$pngBytes.Length)
-$writer.Write([UInt32]22)
-$writer.Write($pngBytes)
-$writer.Dispose()
-$stream.Dispose()
-$foreground.Dispose()
-$format.Dispose()
-$font.Dispose()
-$background.Dispose()
-$path.Dispose()
-$graphics.Dispose()
-$bitmap.Dispose()
+$source = [System.Drawing.Image]::FromFile($sourcePath)
+try {
+  [System.IO.File]::WriteAllBytes($windowsPngPath, [byte[]](New-ResizedPngBytes -Source $source -Size 512))
+  [System.IO.File]::WriteAllBytes($macPngPath, [byte[]](New-ResizedPngBytes -Source $source -Size 1024))
+
+  $sizes = @(16, 24, 32, 48, 64, 128, 256)
+  $frames = @($sizes | ForEach-Object {
+    [PSCustomObject]@{ Size = $_; Bytes = [byte[]](New-ResizedPngBytes -Source $source -Size $_) }
+  })
+
+  $stream = [System.IO.File]::Create($icoPath)
+  $writer = [System.IO.BinaryWriter]::new($stream)
+  try {
+    $writer.Write([UInt16]0)
+    $writer.Write([UInt16]1)
+    $writer.Write([UInt16]$frames.Count)
+    $offset = 6 + (16 * $frames.Count)
+    foreach ($frame in $frames) {
+      $dimension = if ($frame.Size -eq 256) { [Byte]0 } else { [Byte]$frame.Size }
+      $writer.Write($dimension)
+      $writer.Write($dimension)
+      $writer.Write([Byte]0)
+      $writer.Write([Byte]0)
+      $writer.Write([UInt16]1)
+      $writer.Write([UInt16]32)
+      $writer.Write([UInt32]$frame.Bytes.Length)
+      $writer.Write([UInt32]$offset)
+      $offset += $frame.Bytes.Length
+    }
+    foreach ($frame in $frames) { $writer.Write([byte[]]$frame.Bytes) }
+  } finally {
+    $writer.Dispose()
+    $stream.Dispose()
+  }
+} finally {
+  $source.Dispose()
+}
+
+Write-Host "Created Noteleaf icons in $assetDirectory"

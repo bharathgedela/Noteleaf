@@ -5,6 +5,8 @@ import { Sidebar } from '../sidebar/Sidebar';
 import { RichEditor } from '../editor/RichEditor';
 import { MarkdownPreview } from '../markdown/MarkdownPreview';
 import { TaskWorkspace } from '../tasks/TaskWorkspace';
+import { BrandLogo } from '../components/BrandLogo';
+import { hasPrimaryModifier, shortcut } from '../platform';
 
 const EMPTY_NAV: NavigationData = { notebooks: [], favorites: [], recent: [], trash: [] };
 const DEFAULT_SETTINGS: AppSettings = { theme: 'light', editorFontSize: 16, codeFontSize: 14, lineWidth: 880, spellcheck: true, defaultMarkdownMode: 'preview', reopenPreviousSession: true, backupFolder: '', backupFrequency: 'hourly', backupRetention: 10, lastBackupAt: null, lastBackupError: null };
@@ -127,7 +129,7 @@ function ExternalDocumentView({ initial, onDocumentChange, onOpenLinkedDocument 
     {document.viewMode === 'preview' && <div className="external-preview"><MarkdownPreview source={source} onOpenDocument={(href) => onOpenLinkedDocument(document.path, href)} /></div>}
     {document.viewMode === 'edit' && <textarea className="markdown-source single" aria-label="Markdown source" value={source} onChange={(e) => editSource(e.target.value)} spellCheck={false} />}
     {document.viewMode === 'split' && <div className="split-view"><textarea className="markdown-source" aria-label="Markdown source" value={source} onChange={(e) => editSource(e.target.value)} spellCheck={false} /><div className="split-preview"><MarkdownPreview source={source} onOpenDocument={(href) => onOpenLinkedDocument(document.path, href)} /></div></div>}
-    {(dirty || saving) && <div className="external-save-status">{saving ? 'Saving…' : 'Unsaved changes · Ctrl+S'}</div>}
+    {(dirty || saving) && <div className="external-save-status">{saving ? 'Saving…' : `Unsaved changes · ${shortcut('S')}`}</div>}
   </main>;
 }
 
@@ -178,27 +180,27 @@ function SettingsDialog({ settings, onChange, onClose }: { settings: AppSettings
     finally { setBackupBusy(false); }
   };
   const providerName = backup?.provider === 'onedrive' ? 'OneDrive synced folder' : backup?.provider === 'google-drive' ? 'Google Drive synced folder' : backup?.provider === 'local' ? 'Local folder' : 'Not configured';
-  return <div className="modal-backdrop" onMouseDown={onClose}><section className="settings-dialog" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}><header><div><h2>Settings</h2><p>Keep Notes comfortable for the way you read and write.</p></div><button onClick={onClose}><X size={17} /></button></header>
+  return <div className="modal-backdrop" onMouseDown={onClose}><section className="settings-dialog" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}><header><div><h2>Settings</h2><p>Keep Noteleaf comfortable for the way you read and write.</p></div><button onClick={onClose}><X size={17} /></button></header>
     <div className="settings-scroll">
-      <div className="setting-row"><label>Appearance<small>Choose how Notes looks.</small></label><select value={settings.theme} onChange={(e) => void update({ theme: e.target.value as AppSettings['theme'] })}><option value="light">Light</option><option value="dark">Dark</option><option value="system">System</option></select></div>
+      <div className="setting-row"><label>Appearance<small>Choose how Noteleaf looks.</small></label><select value={settings.theme} onChange={(e) => void update({ theme: e.target.value as AppSettings['theme'] })}><option value="light">Light</option><option value="dark">Dark</option><option value="system">System</option></select></div>
       <div className="setting-row"><label>Editor font size<small>{settings.editorFontSize}px</small></label><input type="range" min="14" max="22" value={settings.editorFontSize} onChange={(e) => void update({ editorFontSize: Number(e.target.value) })} /></div>
       <div className="setting-row"><label>Reading width<small>{settings.lineWidth}px</small></label><input type="range" min="680" max="1100" step="20" value={settings.lineWidth} onChange={(e) => void update({ lineWidth: Number(e.target.value) })} /></div>
       <div className="setting-row"><label>Default Markdown mode</label><select value={settings.defaultMarkdownMode} onChange={(e) => void update({ defaultMarkdownMode: e.target.value as AppSettings['defaultMarkdownMode'] })}><option value="preview">Preview</option><option value="edit">Edit</option><option value="split">Split</option></select></div>
       <div className="setting-row"><label>Spell check</label><input type="checkbox" checked={settings.spellcheck} onChange={(e) => void update({ spellcheck: e.target.checked })} /></div>
       <section className="backup-settings">
-        <div className="settings-section-title"><div><h3>Backup &amp; recovery</h3><p>Save the complete Notes library and attachments to a synced or local folder.</p></div><span className={`provider-badge ${backup?.provider || 'none'}`}>{providerName}</span></div>
+        <div className="settings-section-title"><div><h3>Backup &amp; recovery</h3><p>Save the complete Noteleaf library and attachments to a synced or local folder.</p></div><span className={`provider-badge ${backup?.provider || 'none'}`}>{providerName}</span></div>
         <div className="backup-folder"><strong>{backup?.folder || 'Choose a OneDrive, Google Drive, or local folder'}</strong><div><button disabled={backupBusy} onClick={() => void runBackupAction(async () => { const selected = await window.notes.backup.chooseFolder(); if (selected) setBackup(selected); })}>{backup?.folder ? 'Change folder…' : 'Choose folder…'}</button>{backup?.folder && <button disabled={backupBusy} onClick={() => void runBackupAction(() => window.notes.backup.openFolder())}>Open folder</button>}</div></div>
-        <div className="setting-row backup-row"><label>Automatic backup<small>Hourly by default while Notes is open.</small></label><select disabled={!backup?.folder || backupBusy} value={backup?.frequency || 'hourly'} onChange={(e) => void runBackupAction(async () => { setBackup(await window.notes.backup.setSchedule(e.target.value as BackupStatus['frequency'], backup?.retention || 10)); })}><option value="hourly">Every hour</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="off">Off</option></select></div>
+        <div className="setting-row backup-row"><label>Automatic backup<small>Hourly by default while Noteleaf is open.</small></label><select disabled={!backup?.folder || backupBusy} value={backup?.frequency || 'hourly'} onChange={(e) => void runBackupAction(async () => { setBackup(await window.notes.backup.setSchedule(e.target.value as BackupStatus['frequency'], backup?.retention || 10)); })}><option value="hourly">Every hour</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="off">Off</option></select></div>
         <div className="setting-row backup-row"><label>Keep backups<small>Older automatic backups are removed from this folder.</small></label><select disabled={!backup?.folder || backupBusy} value={backup?.retention || 10} onChange={(e) => void runBackupAction(async () => { setBackup(await window.notes.backup.setSchedule(backup?.frequency || 'off', Number(e.target.value))); })}><option value="5">5 backups</option><option value="10">10 backups</option><option value="20">20 backups</option><option value="50">50 backups</option></select></div>
         <div className="backup-actions"><button className="primary" disabled={!backup?.folder || backupBusy} onClick={() => void runBackupAction(async () => { const created = await window.notes.backup.create(); setBackupMessage(`Backup created: ${created.filename}`); })}>{backupBusy ? 'Working…' : 'Back up now'}</button><button disabled={backupBusy} onClick={() => void runBackupAction(async () => { await window.notes.backup.restore(); })}>Restore backup…</button></div>
         {backupMessage && <p className="backup-message">{backupMessage}</p>}
         {backup?.lastBackupError && <p className="backup-error">Last backup failed: {backup.lastBackupError}</p>}
         {backup?.lastBackupAt && <p className="backup-last">Last successful backup: {new Date(backup.lastBackupAt).toLocaleString()}</p>}
         {!!backup?.backups.length && <div className="backup-history"><strong>Recent backups</strong>{backup.backups.slice(0, 3).map((item) => <div key={item.path}><span>{item.filename}</span><small>{(item.size / 1024 / 1024).toFixed(1)} MB</small></div>)}</div>}
-        <p className="backup-note">For cloud protection, select a folder inside the OneDrive or Google Drive desktop app. Notes never receives your cloud password.</p>
+        <p className="backup-note">For cloud protection, select a folder inside the OneDrive or Google Drive desktop app. Noteleaf never receives your cloud password.</p>
       </section>
     </div>
-    <footer><button onClick={() => void window.notes.settings.openDataFolder()}>Open Notes data folder</button></footer>
+    <footer><button onClick={() => void window.notes.settings.openDataFolder()}>Open Noteleaf data folder</button></footer>
   </section></div>;
 }
 
@@ -400,22 +402,22 @@ export function App() {
   }), [createPage, openMarkdown, chooseMarkdownFolder, importMarkdown]);
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
-      if (event.ctrlKey && event.key.toLowerCase() === 'f') { event.preventDefault(); setSearchOpen(true); }
-      if (event.ctrlKey && event.key.toLowerCase() === 't') { event.preventDefault(); setWorkspaceMode((mode) => mode === 'tasks' ? 'documents' : 'tasks'); }
-      if (event.ctrlKey && event.key === ',') { event.preventDefault(); setSettingsOpen(true); }
+      if (hasPrimaryModifier(event) && event.key.toLowerCase() === 'f') { event.preventDefault(); setSearchOpen(true); }
+      if (hasPrimaryModifier(event) && event.key.toLowerCase() === 't') { event.preventDefault(); setWorkspaceMode((mode) => mode === 'tasks' ? 'documents' : 'tasks'); }
+      if (hasPrimaryModifier(event) && event.key === ',') { event.preventDefault(); setSettingsOpen(true); }
     };
     window.addEventListener('keydown', key); return () => window.removeEventListener('keydown', key);
   }, []);
   const closeTab = useCallback((key: string) => setTabs((before) => { const index = before.findIndex((tab) => tab.key === key); const next = before.filter((tab) => tab.key !== key); if (activeKey === key) setActiveKey(next[Math.max(0, index - 1)]?.key); return next; }), [activeKey]);
   useEffect(() => {
     const key = (event: KeyboardEvent) => {
-      if (event.ctrlKey && event.key === 'Tab' && tabs.length > 1) {
+      if (hasPrimaryModifier(event) && event.key === 'Tab' && tabs.length > 1) {
         event.preventDefault();
         const index = tabs.findIndex((tab) => tab.key === activeKey);
         const direction = event.shiftKey ? -1 : 1;
         setActiveKey(tabs[(index + direction + tabs.length) % tabs.length].key);
       }
-      if (event.ctrlKey && event.shiftKey && event.key.toLowerCase() === 'f') { event.preventDefault(); setFocusMode((value) => !value); }
+      if (hasPrimaryModifier(event) && event.shiftKey && event.key.toLowerCase() === 'f') { event.preventDefault(); setFocusMode((value) => !value); }
       if (event.key === 'Escape' && focusMode) setFocusMode(false);
     };
     window.addEventListener('keydown', key);
@@ -499,10 +501,10 @@ export function App() {
         <div className="tabs">{tabs.map((tab) => <button key={tab.key} className={`tab ${workspaceMode === 'documents' && tab.key === activeKey ? 'active' : ''}`} title={tab.kind === 'internal' ? tab.title : tab.document.path} onClick={() => { setActiveKey(tab.key); setWorkspaceMode('documents'); }}><FileText className="tab-icon" size={13} /><span>{tab.kind === 'internal' ? tab.title : tab.document.filename}</span>{tab.kind === 'external' && tab.document.isDirty && <b className="dirty-dot" title="Unsaved changes" />}<i onClick={(e) => { e.stopPropagation(); closeTab(tab.key); }}><X size={13} /></i></button>)}</div>
         {!!tabs.length && <button className={tabsMenuOpen ? 'active' : ''} title="All open tabs" aria-label="All open tabs" onClick={(event) => { event.stopPropagation(); setTabsMenuOpen((value) => !value); }}><List size={16} /></button>}
         <button className="new-note-button" title="New note" onClick={() => void createPage()}><Plus size={17} /><span>New</span></button>
-        <button className={`tasks-button ${workspaceMode === 'tasks' ? 'active' : ''}`} title="Toggle daily tasks (Ctrl+T)" onClick={() => setWorkspaceMode((mode) => mode === 'tasks' ? 'documents' : 'tasks')}><ClipboardList size={16} /><span>Tasks</span></button>
+        <button className={`tasks-button ${workspaceMode === 'tasks' ? 'active' : ''}`} title={`Toggle daily tasks (${shortcut('T')})`} onClick={() => setWorkspaceMode((mode) => mode === 'tasks' ? 'documents' : 'tasks')}><ClipboardList size={16} /><span>Tasks</span></button>
         <button className={markdownExplorerOpen && !focusMode ? 'active' : ''} title="Markdown folder explorer" onClick={toggleMarkdownExplorer}><FolderTree size={16} /></button>
         <button className={`quick-backup ${backupStatus?.folder ? 'configured' : ''}`} disabled={backupBusy} title={backupStatus?.folder ? `Back up now · Automatic backup ${backupStatus.frequency === 'hourly' ? 'every hour' : backupStatus.frequency}` : 'Configure backup'} onClick={() => void quickBackup()}>{backupBusy ? <LoaderCircle className="spin" size={16} /> : <CloudUpload size={16} />}<span>{backupBusy ? 'Backing up' : 'Backup'}</span></button>
-        <button className={focusMode ? 'active' : ''} title={focusMode ? 'Exit focus mode (Ctrl+Shift+F)' : 'Focus mode (Ctrl+Shift+F)'} onClick={() => setFocusMode((value) => !value)}>{focusMode ? <Minimize2 size={16} /> : <Maximize2 size={16} />}</button>
+        <button className={focusMode ? 'active' : ''} title={focusMode ? `Exit focus mode (${shortcut('Shift+F')})` : `Focus mode (${shortcut('Shift+F')})`} onClick={() => setFocusMode((value) => !value)}>{focusMode ? <Minimize2 size={16} /> : <Maximize2 size={16} />}</button>
         <button title="Settings" onClick={() => setSettingsOpen(true)}><SettingsIcon size={16} /></button>
       </header>
       {tabsMenuOpen && <div className="tabs-menu" onClick={(event) => event.stopPropagation()}><header><strong>Open tabs</strong><span>{tabs.length}</span></header>{tabs.map((tab) => <button key={`menu-${tab.key}`} className={workspaceMode === 'documents' && tab.key === activeKey ? 'active' : ''} onClick={() => { setActiveKey(tab.key); setWorkspaceMode('documents'); setTabsMenuOpen(false); }}><FileText size={14} /><span>{tab.kind === 'internal' ? tab.title : tab.document.filename}</span>{tab.kind === 'external' && tab.document.isDirty && <b className="dirty-dot" />}</button>)}</div>}
@@ -510,14 +512,14 @@ export function App() {
       {workspaceMode === 'documents' && !active && <main className="home-dashboard">
         <section className="home-hero">
           <div className="hero-orb orb-one" /><div className="hero-orb orb-two" /><div className="hero-orb orb-three" />
-          <div className="hero-mark">N</div><h1>Welcome to Notes</h1><p>A colorful, quiet place for your ideas, technical notes,<br />and Markdown documents.</p>
+          <BrandLogo className="hero-mark" /><h1>Welcome to Noteleaf</h1><p>A colorful, quiet place for your ideas, technical notes,<br />and Markdown documents.</p>
           <div className="hero-actions"><button className="primary" onClick={() => void createPage()}><FilePlus2 size={17} />New note</button><button onClick={() => void openMarkdown()}><FolderOpen size={17} />Open Markdown</button></div>
         </section>
         <section className="home-cards">
           <article className="home-card recent-card"><header><span><Clock3 size={16} /></span><div><strong>Recent notes</strong><small>Your recently opened pages</small></div></header><div className="recent-card-list">{navigation.recent.length ? navigation.recent.slice(0, 4).map((page) => <button key={`home-${page.id}`} onClick={() => void openPageById(page.id)}><FileText size={13} /><span>{page.title}</span><small>{page.lastOpenedAt ? relativeTime(page.lastOpenedAt) : ''}</small></button>) : <p>Your recent notes will appear here.</p>}</div><button className="card-link" onClick={() => setSearchOpen(true)}>View all notes <ArrowRight size={13} /></button></article>
-          <article className="home-card tips-card"><header><span><Lightbulb size={16} /></span><div><strong>Writing tips</strong><small>Make the most of Notes</small></div></header><ul><li>Type <kbd>/</kbd> for blocks and child pages.</li><li>Paste images, then drag their edges.</li><li>Use Markdown links to connect files.</li></ul><button className="card-link" onClick={() => setSearchOpen(true)}>Search your notes <ArrowRight size={13} /></button></article>
+          <article className="home-card tips-card"><header><span><Lightbulb size={16} /></span><div><strong>Writing tips</strong><small>Make the most of Noteleaf</small></div></header><ul><li>Type <kbd>/</kbd> for blocks and child pages.</li><li>Paste images, then drag their edges.</li><li>Use Markdown links to connect files.</li></ul><button className="card-link" onClick={() => setSearchOpen(true)}>Search your notes <ArrowRight size={13} /></button></article>
           <article className="home-card quick-card"><header><span><Rocket size={16} /></span><div><strong>Quick start</strong><small>Jump straight into your workspace</small></div></header><div className="quick-card-actions"><button onClick={() => void createPage()}><FilePlus2 size={14} />Create a new note</button><button onClick={() => void chooseMarkdownFolder()}><FolderTree size={14} />Open a Markdown folder</button><button onClick={() => void quickBackup()}><CloudUpload size={14} />Back up your notes</button></div></article>
-          <article className="home-card shortcuts-card"><header><span><Keyboard size={16} /></span><div><strong>Shortcuts</strong><small>Move faster around Notes</small></div></header><dl><div><dt>Search</dt><dd>Ctrl F</dd></div><div><dt>Tasks / notes</dt><dd>Ctrl T</dd></div><div><dt>Switch tabs</dt><dd>Ctrl Tab</dd></div><div><dt>Focus mode</dt><dd>Ctrl Shift F</dd></div></dl></article>
+          <article className="home-card shortcuts-card"><header><span><Keyboard size={16} /></span><div><strong>Shortcuts</strong><small>Move faster around Noteleaf</small></div></header><dl><div><dt>Search</dt><dd>{shortcut('F')}</dd></div><div><dt>Tasks / notes</dt><dd>{shortcut('T')}</dd></div><div><dt>Switch tabs</dt><dd>{shortcut('Tab')}</dd></div><div><dt>Focus mode</dt><dd>{shortcut('Shift+F')}</dd></div></dl></article>
         </section>
       </main>}
       {workspaceMode === 'documents' && active?.kind === 'internal' && <InternalDocument key={active.pageId} pageId={active.pageId} settings={settings} breadcrumb={activeLocation} onRevealBreadcrumb={revealSidebarItem} onTitle={(title) => updateTabTitle(active.key, title)} onSaved={refresh} onOpenPage={(pageId) => void navigateInActiveTab(pageId)} onStructureChange={() => void refresh()} />}

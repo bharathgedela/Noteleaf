@@ -23,7 +23,7 @@ describe('NotesRepository', () => {
     const navigation = repository!.navigation();
     expect(navigation.notebooks[0]?.name).toBe('Welcome');
     expect(navigation.notebooks[0]?.sections[0]?.name).toBe('Getting Started');
-    expect(navigation.notebooks[0]?.sections[0]?.pages[0]?.title).toBe('Welcome to Notes');
+    expect(navigation.notebooks[0]?.sections[0]?.pages[0]?.title).toBe('Welcome to Noteleaf');
     expect(repository!.getPage(navigation.notebooks[0].sections[0].pages[0].id).contentMarkdown).toContain('Essential shortcuts');
     const migration = repository!.db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get() as { version: number };
     expect(migration.version).toBe(4);

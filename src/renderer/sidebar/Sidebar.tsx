@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { ChevronDown, ChevronRight, FileText, Folder, GripVertical, MoreHorizontal, Plus, Search, Star, Trash2 } from 'lucide-react';
 import type { NavigationData, NotebookTree, PageSummary, SectionTree } from '../../shared/types';
+import { BrandLogo } from '../components/BrandLogo';
+import { shortcut } from '../platform';
 
 interface SidebarProps {
   data: NavigationData;
@@ -63,8 +65,8 @@ export function Sidebar(props: SidebarProps) {
     return () => cancelAnimationFrame(frame);
   }, [props.activePageId]);
   return <aside className="sidebar" style={{ width: props.width, minWidth: props.width }}>
-    <div className="brand"><span className="brand-mark">N</span><strong>Notes</strong><button title="New notebook" onClick={props.onNewNotebook}><Plus size={16} /></button></div>
-    <button className="search-button" onClick={props.onSearch}><Search size={15} /><span>Search notes…</span><kbd>Ctrl F</kbd></button>
+    <div className="brand"><BrandLogo className="brand-mark" /><strong>Noteleaf</strong><button title="New notebook" onClick={props.onNewNotebook}><Plus size={16} /></button></div>
+    <button className="search-button" onClick={props.onSearch}><Search size={15} /><span>Search notes…</span><kbd>{shortcut('F')}</kbd></button>
     <div className="sidebar-scroll">
       {props.data.favorites.length > 0 && <nav className="sidebar-group"><div className="group-label"><Star size={12} /> Favorites</div>{props.data.favorites.map((page) => <PageRow key={`fav-${page.id}`} page={page} active={props.activePageId === page.id} onOpen={() => props.onOpen(page)} onMenu={(x, y) => props.onPageMenu(page, x, y)} />)}</nav>}
       <nav className="tree" aria-label="Notebooks">

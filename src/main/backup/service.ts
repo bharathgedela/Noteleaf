@@ -7,7 +7,7 @@ import type { BackupFrequency, BackupInfo, BackupStatus } from '../../shared/typ
 import type { NotesRepository } from '../database/repository.js';
 import { createArchive, extractArchive, readBackupManifest } from './archive.js';
 
-const BACKUP_PATTERN = /^Notes-backup-(\d{4}-\d{2}-\d{2})_(\d{2}-\d{2}-\d{2})(?:-\d{3})?\.notesbackup$/;
+const BACKUP_PATTERN = /^(?:Noteleaf|Notes)-backup-(\d{4}-\d{2}-\d{2})_(\d{2}-\d{2}-\d{2})(?:-\d{3})?\.notesbackup$/;
 const PENDING_FILE = 'restore-pending.json';
 
 async function exists(path: string): Promise<boolean> {
@@ -34,7 +34,7 @@ async function validateDatabase(path: string): Promise<void> {
     if (integrity[0]?.quick_check !== 'ok') throw new Error('The database in this backup did not pass its integrity check.');
     const required = ['notebooks', 'sections', 'pages', 'settings'];
     const rows = db.prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name IN (${required.map(() => '?').join(',')})`).all(...required) as Array<{ name: string }>;
-    if (rows.length !== required.length) throw new Error('The backup does not contain a complete Notes database.');
+    if (rows.length !== required.length) throw new Error('The backup does not contain a complete Noteleaf database.');
   } finally { db.close(); }
 }
 
@@ -145,7 +145,7 @@ export class BackupService {
   private async createAt(folder: string, updateStatus: boolean): Promise<BackupInfo> {
     await mkdir(folder, { recursive: true });
     const staging = join(this.dataDirectory, `backup-staging-${randomUUID()}`);
-    const filename = `Notes-backup-${timestamp()}.notesbackup`;
+    const filename = `Noteleaf-backup-${timestamp()}.notesbackup`;
     const destination = join(folder, filename);
     try {
       await mkdir(staging, { recursive: true });
@@ -200,9 +200,9 @@ export class BackupService {
   async restore(): Promise<boolean> {
     const settings = this.repository.getSettings();
     const selected = await dialog.showOpenDialog({
-      title: 'Restore Notes backup',
+      title: 'Restore Noteleaf backup',
       defaultPath: settings.backupFolder || app.getPath('documents'),
-      filters: [{ name: 'Notes backup', extensions: ['notesbackup'] }],
+      filters: [{ name: 'Noteleaf backup', extensions: ['notesbackup'] }],
       properties: ['openFile'],
     });
     if (selected.canceled || !selected.filePaths[0]) return false;
@@ -215,8 +215,8 @@ export class BackupService {
       const response = await dialog.showMessageBox({
         type: 'warning',
         title: 'Restore this backup?',
-        message: `Restore Notes from ${new Date(manifest.createdAt).toLocaleString()}?`,
-        detail: 'Your current notes will be backed up first. Notes will then restart and replace the current library with this backup.',
+        message: `Restore Noteleaf from ${new Date(manifest.createdAt).toLocaleString()}?`,
+        detail: 'Your current notes will be backed up first. Noteleaf will then restart and replace the current library with this backup.',
         buttons: ['Cancel', 'Restore and restart'],
         defaultId: 0,
         cancelId: 0,
