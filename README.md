@@ -43,7 +43,7 @@ These commands download the correct asset from the latest [GitHub release](https
 Run in PowerShell:
 
 ```powershell
-irm https://raw.githubusercontent.com/bharathgedela/notes_app/main/scripts/install.ps1 | iex
+irm "https://raw.githubusercontent.com/bharathgedela/notes_app/main/scripts/install.ps1?$(New-Guid)" | iex
 ```
 
 Complete the displayed Noteleaf setup wizard.
