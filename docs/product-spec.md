@@ -1,5 +1,9 @@
 # Product specification
 
+## First-run experience
+
+A new empty library starts with one **Welcome** notebook, a **Getting Started** section, and a **Welcome to Notes** guide. The guide introduces organization, rich editing, linked pages, Markdown folders, daily Tasks, drag ordering, keyboard shortcuts, Trash, and hourly backups. It includes feature and shortcut tables plus a first-five-minutes checklist. Existing libraries are never replaced or modified by the seed.
+
 The V1 product is a calm macOS and Windows notebook and Markdown reader/editor. Its primary layout is a compact hierarchical sidebar plus a readable document surface. The app supports notebooks, sections, pages, soft deletion, favorites, recents, autosave, global search, and external Markdown in Preview, Edit, and Split modes.
 
 The visual system prioritizes Segoe UI typography, whitespace, a restrained neutral palette, an 880px reading column, strong Markdown rhythm, and clearly separated code blocks. Light mode is primary; dark and system themes remain tasteful and low contrast.

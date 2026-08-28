@@ -82,13 +82,78 @@ export class NotesRepository {
     const notebookId = randomUUID();
     const sectionId = randomUUID();
     const pageId = randomUUID();
-    const markdown = `## Questions\n\n2. How are table IDs selected?\n3. How is the control-table row read?\n4. How is Bulk versus Incremental selected?\n5. Which main function is called?\n6. What happens after failure?\n\nThe simplified logic is:\n\n\`\`\`text\nStart Glue\n   -> get table IDs\n   -> loop through IDs\n   -> read ctrl.ingestion_table\n   -> determine mode\n   -> create audit\n   -> run Bulk or Incremental\n   -> record failure and continue\n   -> commit Glue job\n\`\`\`\n\nIgnore the detailed SQL at this stage.`;
-    const html = `<h2>Questions</h2><ol start="2"><li><p>How are table IDs selected?</p></li><li><p>How is the control-table row read?</p></li><li><p>How is Bulk versus Incremental selected?</p></li><li><p>Which main function is called?</p></li><li><p>What happens after failure?</p></li></ol><p>The simplified logic is:</p><pre><code>Start Glue\n   -&gt; get table IDs\n   -&gt; loop through IDs\n   -&gt; read ctrl.ingestion_table\n   -&gt; determine mode\n   -&gt; create audit\n   -&gt; run Bulk or Incremental\n   -&gt; record failure and continue\n   -&gt; commit Glue job</code></pre><p>Ignore the detailed SQL at this stage.</p>`;
+    const markdown = `A calm, local-first workspace for notes, Markdown documents, and daily tasks. Your writing stays on this computer and saves automatically.
+
+> **Start here:** Rename this page, edit anything below, or create a new notebook from the **+** beside Notes.
+
+## What you can do
+
+| Feature | How it helps |
+| --- | --- |
+| Notebooks and sections | Keep projects and topics in a clear hierarchy. |
+| Rich notes | Write headings, lists, tables, quotes, code blocks, links, and resizable images. |
+| Linked pages | Type **/page**, name the page, and jump between related ideas without adding sidebar clutter. |
+| Markdown workspace | Open individual Markdown files or browse a complete folder tree inside Notes. |
+| Daily Tasks | Press **Ctrl+T** to plan work as To do, In progress, and Done. |
+| Safe backups | Choose a OneDrive, Google Drive, or local folder and Notes backs up automatically every hour. |
+
+## Your first five minutes
+
+- ☐ Rename the **Welcome** notebook for your first project.
+- ☐ Create a section and add a note with its **+** button.
+- ☐ Type **/** in a note to explore blocks and linked pages.
+- ☐ Press **Ctrl+T** and add today's first task.
+- ☐ Select **Backup** in the top toolbar and choose a protected folder.
+
+## Essential shortcuts
+
+| Action | Shortcut |
+| --- | --- |
+| Search all notes | **Ctrl+F** |
+| Toggle Tasks and notes | **Ctrl+T** |
+| Move through open tabs | **Ctrl+Tab** |
+| Focus mode | **Ctrl+Shift+F** |
+| Open Settings | **Ctrl+,** |
+| Save an external Markdown file | **Ctrl+S** |
+
+## Helpful details
+
+1. Drag the small grips in the sidebar to reorder notebooks, sections, and pages.
+2. Paste an image into a note, select it, then drag an edge to resize it.
+3. Relative links in Markdown files open the linked file directly inside Notes.
+4. Deleted pages remain in Trash until you remove them permanently.
+5. Backups include your notes, linked pages, attachments, settings, drafts, and Tasks.
+
+## Local-first by design
+
+Notes does not require an account or send your content to a server. For protection from computer failure, configure the built-in backup to a synced folder. You stay in control of both the working library and every backup file.
+
+You are ready—turn this guide into your own first note, or keep it nearby as a reference.`;
+    const html = `<p><strong>A calm, local-first workspace for notes, Markdown documents, and daily tasks.</strong> Your writing stays on this computer and saves automatically.</p>
+<blockquote><p><strong>Start here:</strong> Rename this page, edit anything below, or create a new notebook from the <strong>+</strong> beside Notes.</p></blockquote>
+<h2>What you can do</h2>
+<table><thead><tr><th><p>Feature</p></th><th><p>How it helps</p></th></tr></thead><tbody>
+<tr><td><p><strong>Notebooks and sections</strong></p></td><td><p>Keep projects and topics in a clear hierarchy.</p></td></tr>
+<tr><td><p><strong>Rich notes</strong></p></td><td><p>Write headings, lists, tables, quotes, code blocks, links, and resizable images.</p></td></tr>
+<tr><td><p><strong>Linked pages</strong></p></td><td><p>Type <strong>/page</strong>, name the page, and jump between related ideas without adding sidebar clutter.</p></td></tr>
+<tr><td><p><strong>Markdown workspace</strong></p></td><td><p>Open individual Markdown files or browse a complete folder tree inside Notes.</p></td></tr>
+<tr><td><p><strong>Daily Tasks</strong></p></td><td><p>Press <strong>Ctrl+T</strong> to plan work as To do, In progress, and Done.</p></td></tr>
+<tr><td><p><strong>Safe backups</strong></p></td><td><p>Choose a OneDrive, Google Drive, or local folder and Notes backs up automatically every hour.</p></td></tr>
+</tbody></table>
+<h2>Your first five minutes</h2>
+<ul><li><p>☐ Rename the <strong>Welcome</strong> notebook for your first project.</p></li><li><p>☐ Create a section and add a note with its <strong>+</strong> button.</p></li><li><p>☐ Type <strong>/</strong> in a note to explore blocks and linked pages.</p></li><li><p>☐ Press <strong>Ctrl+T</strong> and add today's first task.</p></li><li><p>☐ Select <strong>Backup</strong> in the top toolbar and choose a protected folder.</p></li></ul>
+<h2>Essential shortcuts</h2>
+<table><thead><tr><th><p>Action</p></th><th><p>Shortcut</p></th></tr></thead><tbody><tr><td><p>Search all notes</p></td><td><p><strong>Ctrl+F</strong></p></td></tr><tr><td><p>Toggle Tasks and notes</p></td><td><p><strong>Ctrl+T</strong></p></td></tr><tr><td><p>Move through open tabs</p></td><td><p><strong>Ctrl+Tab</strong></p></td></tr><tr><td><p>Focus mode</p></td><td><p><strong>Ctrl+Shift+F</strong></p></td></tr><tr><td><p>Open Settings</p></td><td><p><strong>Ctrl+,</strong></p></td></tr><tr><td><p>Save an external Markdown file</p></td><td><p><strong>Ctrl+S</strong></p></td></tr></tbody></table>
+<h2>Helpful details</h2>
+<ol><li><p>Drag the small grips in the sidebar to reorder notebooks, sections, and pages.</p></li><li><p>Paste an image into a note, select it, then drag an edge to resize it.</p></li><li><p>Relative links in Markdown files open the linked file directly inside Notes.</p></li><li><p>Deleted pages remain in Trash until you remove them permanently.</p></li><li><p>Backups include your notes, linked pages, attachments, settings, drafts, and Tasks.</p></li></ol>
+<h2>Local-first by design</h2>
+<p>Notes does not require an account or send your content to a server. For protection from computer failure, configure the built-in backup to a synced folder. You stay in control of both the working library and every backup file.</p>
+<p><strong>You are ready—turn this guide into your own first note, or keep it nearby as a reference.</strong></p>`;
     this.db.transaction(() => {
-      this.db.prepare('INSERT INTO notebooks VALUES (?, ?, 0, ?, ?)').run(notebookId, 'Work', created, created);
-      this.db.prepare('INSERT INTO sections VALUES (?, ?, ?, 0, ?, ?)').run(sectionId, notebookId, 'AWS', created, created);
+      this.db.prepare('INSERT INTO notebooks VALUES (?, ?, 0, ?, ?)').run(notebookId, 'Welcome', created, created);
+      this.db.prepare('INSERT INTO sections VALUES (?, ?, ?, 0, ?, ?)').run(sectionId, notebookId, 'Getting Started', created, created);
       this.db.prepare(`INSERT INTO pages(id, section_id, title, content_html, content_markdown, position, is_favorite, is_deleted, created_at, updated_at, last_opened_at)
-        VALUES (?, ?, ?, ?, ?, 0, 0, 0, ?, ?, ?)`).run(pageId, sectionId, 'AWS Ingestion Control Table', html, markdown, created, created, created);
+        VALUES (?, ?, ?, ?, ?, 0, 0, 0, ?, ?, ?)`).run(pageId, sectionId, 'Welcome to Notes', html, markdown, created, created, created);
     })();
   }
 
