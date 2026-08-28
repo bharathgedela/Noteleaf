@@ -2,6 +2,10 @@
 
 All notable changes to Noteleaf are documented here.
 
+## 1.0.5 — 2026-08-28
+
+- Prevents notebook color collisions so the first eight visible notebooks always receive distinct colors on both macOS and Windows.
+
 ## 1.0.4 — 2026-08-28
 
 - Shows a stable numeric percentage and downloaded/total size while the one-command macOS installer fetches the Noteleaf DMG, using GitHub release metadata so macOS responses without `Content-Length` still report progress.

@@ -1,9 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
 import { ChevronDown, ChevronRight, ChevronsLeft, FileSymlink, FileText, Folder, GripVertical, MoreHorizontal, Plus, Search, Star, Trash2 } from 'lucide-react';
 import type { NavigationData, NotebookTree, PageSummary, SectionTree } from '../../shared/types';
 import { BrandLogo } from '../components/BrandLogo';
 import { shortcut } from '../platform';
+import { assignNotebookColors, NOTEBOOK_COLORS } from './notebook-colors';
 
 interface SidebarProps {
   data: NavigationData;
@@ -26,11 +27,8 @@ interface SidebarProps {
 
 type DropIndicator = { kind: 'notebook' | 'section' | 'page'; id: string; edge: 'before' | 'after' | 'inside' };
 
-const NOTEBOOK_COLORS = ['#087f5b', '#2563eb', '#7c3aed', '#d97706', '#0891b2', '#db2777', '#16a34a', '#dc5a34'];
-
-function notebookStyle(id: string): CSSProperties {
-  const hash = [...id].reduce((value, character) => ((value * 31) + character.charCodeAt(0)) >>> 0, 7);
-  return { '--notebook-color': NOTEBOOK_COLORS[hash % NOTEBOOK_COLORS.length] } as CSSProperties;
+function notebookStyle(color: string): CSSProperties {
+  return { '--notebook-color': color } as CSSProperties;
 }
 
 function edgeFor(event: React.DragEvent): 'before' | 'after' { const bounds = event.currentTarget.getBoundingClientRect(); return event.clientY < bounds.top + bounds.height / 2 ? 'before' : 'after'; }
@@ -53,6 +51,7 @@ export function Sidebar(props: SidebarProps) {
   const [showTrash, setShowTrash] = useState(false);
   const [recentCollapsed, setRecentCollapsed] = useState(true);
   const [drop, setDrop] = useState<DropIndicator>();
+  const notebookColors = useMemo(() => assignNotebookColors(props.data.notebooks.map((notebook) => notebook.id)), [props.data.notebooks]);
   const toggle = (id: string) => setCollapsed((before) => { const next = new Set(before); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   const expand = (id: string) => setCollapsed((before) => { const next = new Set(before); next.delete(id); return next; });
   useEffect(() => {
@@ -72,7 +71,7 @@ export function Sidebar(props: SidebarProps) {
       <nav className="tree" aria-label="Notebooks">
         {props.data.notebooks.map((notebook, notebookIndex) => {
           const notebookDrop = drop?.kind === 'notebook' && drop.id === notebook.id ? drop.edge : undefined;
-          return <div className={`notebook ${notebookDrop ? `drop-${notebookDrop}` : ''}`} key={notebook.id} style={notebookStyle(notebook.id)}>
+          return <div className={`notebook ${notebookDrop ? `drop-${notebookDrop}` : ''}`} key={notebook.id} style={notebookStyle(notebookColors.get(notebook.id) ?? NOTEBOOK_COLORS[notebookIndex % NOTEBOOK_COLORS.length])}>
             <div className="notebook-row" onDragOver={(event) => { const notebookDrag = event.dataTransfer.types.includes('text/notes-notebook'); const sectionDrag = event.dataTransfer.types.includes('text/notes-section'); if (!notebookDrag && !sectionDrag) return; event.preventDefault(); event.stopPropagation(); setDrop({ kind: 'notebook', id: notebook.id, edge: notebookDrag ? edgeFor(event) : 'inside' }); }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDrop(undefined); }} onDrop={(event) => { const notebookId = event.dataTransfer.getData('text/notes-notebook'); const sectionId = event.dataTransfer.getData('text/notes-section'); if (!notebookId && !sectionId) return; event.preventDefault(); event.stopPropagation(); if (notebookId) props.onMoveNotebook(notebookId, insertionPosition(props.data.notebooks.map((item) => item.id), notebookId, notebookIndex, edgeFor(event))); else props.onMoveSection(sectionId, notebook.id, notebook.sections.length); setDrop(undefined); }}>
               <span className="drag-handle" draggable title="Drag notebook to reorder" onDragStart={(event) => { event.stopPropagation(); event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/notes-notebook', notebook.id); }} onDragEnd={() => setDrop(undefined)}><GripVertical size={12} /></span><button className="disclosure" onClick={() => toggle(notebook.id)}>{collapsed.has(notebook.id) ? <ChevronRight size={14} /> : <ChevronDown size={14} />}</button><button className="notebook-name" data-nav-id={notebook.id} onClick={() => toggle(notebook.id)}>{notebook.name}</button><button className="row-action" title={`New section in ${notebook.name}`} aria-label={`New section in ${notebook.name}`} onClick={() => { expand(notebook.id); props.onNewSection(notebook.id); }}><Plus size={14} /></button><button className="row-action" title={`More options for ${notebook.name}`} aria-label={`More options for ${notebook.name}`} onClick={(event) => { event.stopPropagation(); const box = event.currentTarget.getBoundingClientRect(); props.onNotebookMenu(notebook, box.right, box.bottom); }}><MoreHorizontal size={14} /></button>
             </div>
