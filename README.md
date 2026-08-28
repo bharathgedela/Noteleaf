@@ -6,7 +6,7 @@
 
 Noteleaf is a polished, local-first notebook, daily task tracker, and Markdown workspace for Windows and macOS. Notes stay on your computer, save automatically, and can be protected with portable backups in a local, OneDrive, or Google Drive-synced folder.
 
-Current release: **1.0.1**
+Current release: **1.0.2**
 
 See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
@@ -36,33 +36,27 @@ See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 ## Install Noteleaf
 
-When prebuilt installers are available, download them from the [GitHub Releases page](https://github.com/bharathgedela/notes_app/releases). To build and install directly from source, install [Git](https://git-scm.com/) and Node.js 22 with npm 10 or newer, then use the command for your computer.
+These commands download the correct asset from the latest [GitHub release](https://github.com/bharathgedela/notes_app/releases), verify its SHA-256 checksum, and start Noteleaf. No Git, Node.js, or npm installation is required.
 
 ### Windows x64 — one command
 
-Run in PowerShell. It clones the repository, builds the installer, and opens it:
+Run in PowerShell:
 
 ```powershell
-git clone https://github.com/bharathgedela/notes_app.git; Set-Location notes_app; npm ci; npm run dist:win; $setup = Get-ChildItem ".\release\Noteleaf-*-Setup.exe" | Select-Object -First 1; Start-Process $setup.FullName
+irm https://raw.githubusercontent.com/bharathgedela/notes_app/main/scripts/install.ps1 | iex
 ```
 
 Complete the displayed Noteleaf setup wizard.
 
-### macOS Apple Silicon — one command
+### macOS — one command
 
-Run in Terminal on an M-series Mac. It builds and opens the DMG:
-
-```sh
-git clone https://github.com/bharathgedela/notes_app.git && cd notes_app && npm ci && npm run dist:mac && open "$(find release -maxdepth 1 -name 'Noteleaf-*-arm64.dmg' -print -quit)"
-```
-
-### macOS Intel — one command
+Run in Terminal. The script automatically selects Apple Silicon or Intel and installs Noteleaf in `~/Applications`:
 
 ```sh
-git clone https://github.com/bharathgedela/notes_app.git && cd notes_app && npm ci && npm run dist:mac:x64 && open "$(find release -maxdepth 1 -name 'Noteleaf-*-x64.dmg' -print -quit)"
+curl -fsSL https://raw.githubusercontent.com/bharathgedela/notes_app/main/scripts/install.sh | sh
 ```
 
-After the DMG opens, drag Noteleaf into **Applications**. Public macOS downloads should be Developer ID signed and notarized; unsigned local builds may require using **Open** from Finder's context menu on their build Mac.
+The bootstrap scripts are readable in [`scripts/install.ps1`](scripts/install.ps1) and [`scripts/install.sh`](scripts/install.sh) before running them. Until public builds are Developer ID signed and notarized, macOS may require choosing **Open** from Finder's context menu on first launch; unsigned Windows builds may similarly display SmartScreen.
 
 ## Development
 
@@ -98,7 +92,7 @@ npm run dist:mac
 npm run dist:mac:x64
 ```
 
-Artifacts are written to `release/`. macOS distribution outside the developer's machine requires Apple Developer ID signing and notarization. See [docs/releasing.md](docs/releasing.md) for the complete release checklist.
+Artifacts are written to `release/`. A pushed version tag runs the release workflow, publishes stable asset names and `SHA256SUMS.txt`, and makes the one-command installers work. macOS distribution outside the developer's machine should use Apple Developer ID signing and notarization. See [docs/releasing.md](docs/releasing.md) for the complete release checklist.
 
 ## Upgrading from Notes
 

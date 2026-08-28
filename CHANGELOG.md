@@ -2,12 +2,13 @@
 
 All notable changes to Noteleaf are documented here.
 
-## Unreleased
+## 1.0.2 — 2026-08-28
 
 - Adds linked Markdown shortcuts to notebook sections, preserving the source file and its relative links instead of copying rendered content into an internal page.
 - Adds **Add to notebook** to open Markdown documents and **Add Markdown file…** to section menus.
 - Uses one tab-free notebook workspace for sidebar pages, reserves tabs for external Markdown files, moves sidebar collapse beside the notebook `+`, and adds an always-available Home button.
 - Keeps external Markdown actions visible beside a compact, ellipsized file path; the full source path remains available on hover.
+- Adds checksum-verified one-command installers and an automated Windows/macOS GitHub release workflow.
 
 ## 1.0.1 — 2026-08-28
 

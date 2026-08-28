@@ -1,6 +1,6 @@
 {
   "name": "noteleaf-desktop",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "author": "Bharath Kumar Gedela",
   "license": "Apache-2.0",
@@ -131,7 +131,7 @@
     "mac": {
       "icon": "assets/icon-mac.png",
       "category": "public.app-category.productivity",
-      "artifactName": "Noteleaf-${version}-${arch}.${ext}"
+      "artifactName": "Noteleaf-${arch}.${ext}"
     },
     "win": {
       "icon": "assets/icon.ico",
@@ -143,7 +143,7 @@
           ]
         }
       ],
-      "artifactName": "Noteleaf-${version}-Setup.${ext}"
+      "artifactName": "Noteleaf-Setup.${ext}"
     },
     "nsis": {
       "oneClick": false,
