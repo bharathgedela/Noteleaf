@@ -2,12 +2,11 @@ import { dialog, shell } from 'electron';
 import { basename, dirname, extname, join } from 'node:path';
 import { copyFile, mkdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
-import { marked } from 'marked';
-import sanitizeHtml from 'sanitize-html';
 import type { ExternalDocument, MarkdownViewMode, Page } from '../shared/types.js';
 import type { NotesRepository } from './database/repository.js';
 import { resolveMarkdownLink } from './markdown-links.js';
 import { scanMarkdownFolder } from './markdown-folder.js';
+import { markdownToEditorHtml } from './markdown.js';
 
 const MAX_MARKDOWN_BYTES = 20 * 1024 * 1024;
 const MIME_EXTENSIONS: Record<string, string> = {
@@ -94,12 +93,7 @@ export class FileService {
     const external = await this.openMarkdown();
     if (!external) return null;
     const title = basename(external.filename, extname(external.filename));
-    const unsafe = await marked.parse(external.content, { async: false });
-    const contentHtml = sanitizeHtml(String(unsafe), {
-      allowedTags: sanitizeHtml.defaults.allowedTags.concat(['img', 'h1', 'h2', 'table', 'thead', 'tbody', 'tr', 'th', 'td']),
-      allowedAttributes: { a: ['href', 'title'], img: ['src', 'alt', 'title'], code: ['class'] },
-      allowedSchemes: ['http', 'https', 'data'],
-    });
+    const contentHtml = await markdownToEditorHtml(external.content);
     const created = this.repository.createPage(sectionId, title);
     return this.repository.savePage(created.id, { title, contentHtml, contentMarkdown: external.content });
   }

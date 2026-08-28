@@ -34,6 +34,18 @@ export interface BackupStatus {
   backups: BackupInfo[];
 }
 
+export interface McpStatus {
+  enabled: boolean;
+  running: boolean;
+  allowWrites: boolean;
+  port: number;
+  endpoint: string;
+  executablePath: string;
+  stdioArguments: string[];
+  stdioEnvironment: Record<string, string>;
+  lastError: string | null;
+}
+
 export interface PageSummary {
   id: Id;
   sectionId: Id;
@@ -121,6 +133,10 @@ export interface AppSettings {
   backupRetention: number;
   lastBackupAt: string | null;
   lastBackupError: string | null;
+  mcpEnabled: boolean;
+  mcpAllowWrites: boolean;
+  mcpPort: number;
+  mcpAccessToken: string;
 }
 
 export interface NotesApi {
@@ -186,6 +202,10 @@ export interface NotesApi {
     restore(): Promise<boolean>;
     openFolder(): Promise<void>;
   };
+  mcp: {
+    status(): Promise<McpStatus>;
+    regenerateAccessLink(): Promise<McpStatus>;
+  };
   system: {
     openExternal(url: string): Promise<void>;
     platform(): string;
@@ -193,5 +213,6 @@ export interface NotesApi {
   events: {
     onOpenExternal(callback: (document: ExternalDocument) => void): () => void;
     onCommand(callback: (command: string) => void): () => void;
+    onLibraryChanged(callback: () => void): () => void;
   };
 }

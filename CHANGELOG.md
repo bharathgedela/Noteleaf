@@ -2,6 +2,18 @@
 
 All notable changes to Noteleaf are documented here.
 
+## 1.1.0 — 2026-08-28
+
+- Adds a built-in Model Context Protocol server for Claude, ChatGPT, Codex, and other compatible AI clients.
+- Exposes scalable notebook discovery, section/page listing, full-text search, complete Markdown reads, and daily task status.
+- Adds opt-in page and task creation/update tools, with read-only mode as the default and no destructive delete tools.
+- Prevents stale AI writes by requiring the latest page revision before every update; supports replace, append, and prepend modes.
+- Reads and safely updates linked external Markdown files at their original locations.
+- Adds private stdio connections for local clients and a disabled-by-default, tokenized loopback Streamable HTTP endpoint for temporary HTTPS tunnels.
+- Adds an **AI & MCP** settings panel with connection status, generated local-client configuration, endpoint copying, and private-link rotation.
+- Refreshes clean open pages after MCP changes or when Noteleaf regains focus without discarding unsaved local typing.
+- Upgrades Electron to patched release 39.8.10 and keeps the shipped production dependency audit clear; the remaining npm advisory is confined to Electron's development-time archive downloader.
+
 ## 1.0.5 — 2026-08-28
 
 - Prevents notebook color collisions so the first eight visible notebooks always receive distinct colors on both macOS and Windows.

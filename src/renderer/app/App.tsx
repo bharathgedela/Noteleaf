@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowLeft, ArrowRight, BookPlus, CheckCircle2, ChevronDown, ChevronRight, ChevronsRight, ClipboardList, Clock3, CloudUpload, FilePlus2, FileText, Folder, FolderOpen, FolderTree, Home, Keyboard, Lightbulb, List, LoaderCircle, Maximize2, Minimize2, Plus, RefreshCw, Rocket, Settings as SettingsIcon, X } from 'lucide-react';
-import type { AppSettings, BackupStatus, ExternalDocument, MarkdownFolderEntry, MarkdownFolderTree, NavigationData, NotebookTree, Page, PageSummary, SaveState, SearchResult, SectionTree } from '../../shared/types';
+import type { AppSettings, BackupStatus, ExternalDocument, MarkdownFolderEntry, MarkdownFolderTree, McpStatus, NavigationData, NotebookTree, Page, PageSummary, SaveState, SearchResult, SectionTree } from '../../shared/types';
 import { Sidebar } from '../sidebar/Sidebar';
 import { RichEditor } from '../editor/RichEditor';
 import { MarkdownPreview } from '../markdown/MarkdownPreview';
@@ -9,7 +9,7 @@ import { BrandLogo } from '../components/BrandLogo';
 import { hasPrimaryModifier, shortcut } from '../platform';
 
 const EMPTY_NAV: NavigationData = { notebooks: [], favorites: [], recent: [], trash: [] };
-const DEFAULT_SETTINGS: AppSettings = { theme: 'light', editorFontSize: 16, codeFontSize: 14, lineWidth: 880, spellcheck: true, defaultMarkdownMode: 'preview', reopenPreviousSession: true, backupFolder: '', backupFrequency: 'hourly', backupRetention: 10, lastBackupAt: null, lastBackupError: null };
+const DEFAULT_SETTINGS: AppSettings = { theme: 'light', editorFontSize: 16, codeFontSize: 14, lineWidth: 880, spellcheck: true, defaultMarkdownMode: 'preview', reopenPreviousSession: true, backupFolder: '', backupFrequency: 'hourly', backupRetention: 10, lastBackupAt: null, lastBackupError: null, mcpEnabled: false, mcpAllowWrites: false, mcpPort: 37931, mcpAccessToken: '' };
 type Tab = { kind: 'internal'; key: string; pageId: string; title: string; history: string[]; historyIndex: number } | { kind: 'external'; key: string; document: ExternalDocument };
 type StructureMenu = { kind: 'notebook'; item: NotebookTree; x: number; y: number } | { kind: 'section'; item: SectionTree; x: number; y: number };
 type RenameDialogState = { kind: 'notebook' | 'section'; id: string; name: string };
@@ -42,7 +42,7 @@ function useReliableAutofocus(ref: React.RefObject<HTMLInputElement | null>): vo
   }, [ref]);
 }
 
-function InternalDocument({ pageId, settings, breadcrumb, onRevealBreadcrumb, onTitle, onSaved, onOpenPage, onStructureChange }: { pageId: string; settings: AppSettings; breadcrumb?: { notebookId: string; notebook: string; sectionId: string; section: string }; onRevealBreadcrumb: (id: string) => void; onTitle: (title: string) => void; onSaved: () => void; onOpenPage: (pageId: string) => void; onStructureChange: () => void }) {
+function InternalDocument({ pageId, settings, libraryRevision, breadcrumb, onRevealBreadcrumb, onTitle, onSaved, onOpenPage, onStructureChange }: { pageId: string; settings: AppSettings; libraryRevision: number; breadcrumb?: { notebookId: string; notebook: string; sectionId: string; section: string }; onRevealBreadcrumb: (id: string) => void; onTitle: (title: string) => void; onSaved: () => void; onOpenPage: (pageId: string) => void; onStructureChange: () => void }) {
   const [page, setPage] = useState<Page | null>(null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState({ html: '<p></p>', markdown: '' });
@@ -52,10 +52,11 @@ function InternalDocument({ pageId, settings, breadcrumb, onRevealBreadcrumb, on
   const latest = useRef<{ page: Page | null; title: string; content: { html: string; markdown: string } }>({ page: null, title: '', content: { html: '<p></p>', markdown: '' } });
   latest.current = { page, title, content };
   useEffect(() => {
+    if (dirty.current) return;
     let live = true;
     window.notes.pages.get(pageId).then((next) => { if (live) { setPage(next); setTitle(next.title); setContent({ html: next.contentHtml, markdown: next.contentMarkdown }); setStatus('saved'); dirty.current = false; } });
     return () => { live = false; };
-  }, [pageId]);
+  }, [pageId, libraryRevision]);
   useEffect(() => () => {
     const current = latest.current;
     if (dirty.current && current.page) void window.notes.pages.save(current.page.id, { title: current.title.trim() || 'Untitled', contentHtml: current.content.html, contentMarkdown: current.content.markdown });
@@ -167,11 +168,16 @@ function SearchPalette({ onClose, onOpen }: { onClose: () => void; onOpen: (id: 
 }
 
 function SettingsDialog({ settings, onChange, onClose }: { settings: AppSettings; onChange: (settings: AppSettings) => void; onClose: () => void }) {
-  const update = async (patch: Partial<AppSettings>) => onChange(await window.notes.settings.update(patch));
   const [backup, setBackup] = useState<BackupStatus>();
   const [backupBusy, setBackupBusy] = useState(false);
   const [backupMessage, setBackupMessage] = useState('');
-  useEffect(() => { void window.notes.backup.status().then(setBackup); }, []);
+  const [mcp, setMcp] = useState<McpStatus>();
+  const [mcpMessage, setMcpMessage] = useState('');
+  const update = async (patch: Partial<AppSettings>) => {
+    onChange(await window.notes.settings.update(patch));
+    if (Object.keys(patch).some((key) => key.startsWith('mcp'))) setMcp(await window.notes.mcp.status());
+  };
+  useEffect(() => { void Promise.all([window.notes.backup.status().then(setBackup), window.notes.mcp.status().then(setMcp)]); }, []);
   const runBackupAction = async (action: () => Promise<void>) => {
     if (backupBusy) return;
     setBackupBusy(true); setBackupMessage('');
@@ -179,7 +185,13 @@ function SettingsDialog({ settings, onChange, onClose }: { settings: AppSettings
     catch (error) { setBackupMessage(error instanceof Error ? error.message.replace(/^Error invoking remote method '[^']+': Error: /, '') : 'Backup operation failed.'); }
     finally { setBackupBusy(false); }
   };
+  const copyMcp = async (value: string, label: string) => {
+    try { await navigator.clipboard.writeText(value); setMcpMessage(`${label} copied.`); }
+    catch { setMcpMessage('Could not copy automatically. Select and copy the text manually.'); }
+  };
   const providerName = backup?.provider === 'onedrive' ? 'OneDrive synced folder' : backup?.provider === 'google-drive' ? 'Google Drive synced folder' : backup?.provider === 'local' ? 'Local folder' : 'Not configured';
+  const stdioConfig = mcp ? JSON.stringify({ mcpServers: { noteleaf: { command: mcp.executablePath, args: mcp.stdioArguments, env: mcp.stdioEnvironment } } }, null, 2) : '';
+  const mcpState = mcp?.lastError ? 'error' : mcp?.running ? 'running' : 'off';
   return <div className="modal-backdrop" onMouseDown={onClose}><section className="settings-dialog" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}><header><div><h2>Settings</h2><p>Keep Noteleaf comfortable for the way you read and write.</p></div><button onClick={onClose}><X size={17} /></button></header>
     <div className="settings-scroll">
       <div className="setting-row"><label>Appearance<small>Choose how Noteleaf looks.</small></label><select value={settings.theme} onChange={(e) => void update({ theme: e.target.value as AppSettings['theme'] })}><option value="light">Light</option><option value="dark">Dark</option><option value="system">System</option></select></div>
@@ -187,6 +199,24 @@ function SettingsDialog({ settings, onChange, onClose }: { settings: AppSettings
       <div className="setting-row"><label>Reading width<small>{settings.lineWidth}px</small></label><input type="range" min="680" max="1100" step="20" value={settings.lineWidth} onChange={(e) => void update({ lineWidth: Number(e.target.value) })} /></div>
       <div className="setting-row"><label>Default Markdown mode</label><select value={settings.defaultMarkdownMode} onChange={(e) => void update({ defaultMarkdownMode: e.target.value as AppSettings['defaultMarkdownMode'] })}><option value="preview">Preview</option><option value="edit">Edit</option><option value="split">Split</option></select></div>
       <div className="setting-row"><label>Spell check</label><input type="checkbox" checked={settings.spellcheck} onChange={(e) => void update({ spellcheck: e.target.checked })} /></div>
+      <section className="mcp-settings">
+        <div className="settings-section-title"><div><h3>AI &amp; MCP</h3><p>Let Claude, ChatGPT, and other MCP clients find and work with your Noteleaf library.</p></div><span className={`mcp-badge ${mcpState}`}>{mcp?.lastError ? 'Error' : mcp?.running ? 'Connected' : 'Local'}</span></div>
+        <div className="setting-row"><label>Local HTTP endpoint<small>Enable this when connecting through an HTTPS tunnel for ChatGPT.</small></label><input type="checkbox" checked={settings.mcpEnabled} onChange={(event) => void update({ mcpEnabled: event.target.checked })} /></div>
+        <div className="setting-row"><label>Allow AI changes<small>Off means clients can search and read, but cannot create or update anything.</small></label><input type="checkbox" checked={settings.mcpAllowWrites} onChange={(event) => void update({ mcpAllowWrites: event.target.checked })} /></div>
+        {mcp?.lastError && <p className="mcp-error">Could not start MCP: {mcp.lastError}</p>}
+        {mcp && <div className="mcp-connect-card">
+          <div><strong>Private local endpoint</strong><small>Keep this secret link private. It grants access to your Noteleaf MCP tools.</small></div>
+          <code title={mcp.endpoint}>{mcp.endpoint}</code>
+          <div className="mcp-actions"><button disabled={!mcp.running} onClick={() => void copyMcp(mcp.endpoint, 'Endpoint')}>Copy endpoint</button><button onClick={() => void window.notes.mcp.regenerateAccessLink().then((status) => { setMcp(status); setMcpMessage('Created a new private access link.'); })}>New private link</button></div>
+        </div>}
+        {mcp && <div className="mcp-connect-card">
+          <div><strong>Claude Desktop / local MCP configuration</strong><small>This starts a private stdio connection and does not require the HTTP switch above.</small></div>
+          <pre>{stdioConfig}</pre>
+          <div className="mcp-actions"><button onClick={() => void copyMcp(stdioConfig, 'Claude configuration')}>Copy configuration</button></div>
+        </div>}
+        <p className="mcp-note">For ChatGPT, enable the endpoint, expose port <strong>{mcp?.port ?? settings.mcpPort}</strong> through a temporary HTTPS tunnel, and replace the local host in the private endpoint with the tunnel host. Write tools are announced separately so the AI host can request approval.</p>
+        {mcpMessage && <p className="mcp-message">{mcpMessage}</p>}
+      </section>
       <section className="backup-settings">
         <div className="settings-section-title"><div><h3>Backup &amp; recovery</h3><p>Save the complete Noteleaf library and attachments to a synced or local folder.</p></div><span className={`provider-badge ${backup?.provider || 'none'}`}>{providerName}</span></div>
         <div className="backup-folder"><strong>{backup?.folder || 'Choose a OneDrive, Google Drive, or local folder'}</strong><div><button disabled={backupBusy} onClick={() => void runBackupAction(async () => { const selected = await window.notes.backup.chooseFolder(); if (selected) setBackup(selected); })}>{backup?.folder ? 'Change folder…' : 'Choose folder…'}</button>{backup?.folder && <button disabled={backupBusy} onClick={() => void runBackupAction(() => window.notes.backup.openFolder())}>Open folder</button>}</div></div>
@@ -257,6 +287,7 @@ export function App() {
   const [tabsMenuOpen, setTabsMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [libraryRevision, setLibraryRevision] = useState(0);
   const [backupStatus, setBackupStatus] = useState<BackupStatus>();
   const [backupBusy, setBackupBusy] = useState(false);
   const [toast, setToast] = useState<ToastState>();
@@ -274,6 +305,17 @@ export function App() {
     setActiveKey(key); setWorkspaceMode('documents');
   }, []);
   useEffect(() => { void Promise.all([refresh(), window.notes.settings.get().then(setSettings)]); }, [refresh]);
+  useEffect(() => window.notes.events.onLibraryChanged(() => {
+    setLibraryRevision((revision) => revision + 1);
+    void refresh();
+    const cleanExternalTabs = tabs.filter((tab): tab is Extract<Tab, { kind: 'external' }> => tab.kind === 'external' && !tab.document.isDirty);
+    if (cleanExternalTabs.length) void Promise.all(cleanExternalTabs.map(async (tab) => ({ key: tab.key, document: await window.notes.files.openMarkdown(tab.document.path) }))).then((updates) => {
+      setTabs((before) => before.map((tab) => {
+        const update = updates.find((item) => item.key === tab.key)?.document;
+        return update && tab.kind === 'external' && !tab.document.isDirty ? { ...tab, document: update } : tab;
+      }));
+    });
+  }), [refresh, tabs]);
   useEffect(() => { window.localStorage.setItem('notes.sidebarWidth', String(sidebarWidth)); }, [sidebarWidth]);
   useEffect(() => { window.localStorage.setItem('notes.explorerWidth', String(explorerWidth)); }, [explorerWidth]);
   useEffect(() => {
@@ -579,7 +621,7 @@ export function App() {
           <article className="home-card shortcuts-card"><header><span><Keyboard size={16} /></span><div><strong>Shortcuts</strong><small>Move faster around Noteleaf</small></div></header><dl><div><dt>Search</dt><dd>{shortcut('F')}</dd></div><div><dt>Tasks / notes</dt><dd>{shortcut('T')}</dd></div><div><dt>Switch tabs</dt><dd>{shortcut('Tab')}</dd></div><div><dt>Focus mode</dt><dd>{shortcut('Shift+F')}</dd></div></dl></article>
         </section>
       </main>}
-      {workspaceMode === 'documents' && active?.kind === 'internal' && <InternalDocument key={active.pageId} pageId={active.pageId} settings={settings} breadcrumb={activeLocation} onRevealBreadcrumb={revealSidebarItem} onTitle={(title) => updateTabTitle(active.key, title)} onSaved={refresh} onOpenPage={(pageId) => void navigateInActiveTab(pageId)} onStructureChange={() => void refresh()} />}
+      {workspaceMode === 'documents' && active?.kind === 'internal' && <InternalDocument key={active.pageId} pageId={active.pageId} settings={settings} libraryRevision={libraryRevision} breadcrumb={activeLocation} onRevealBreadcrumb={revealSidebarItem} onTitle={(title) => updateTabTitle(active.key, title)} onSaved={refresh} onOpenPage={(pageId) => void navigateInActiveTab(pageId)} onStructureChange={() => void refresh()} />}
       {workspaceMode === 'documents' && active?.kind === 'external' && <ExternalDocumentView key={active.document.path} initial={active.document} linked={Boolean(linkedActivePage)} onDocumentChange={(doc) => updateExternalTab(active.key, doc)} onOpenLinkedDocument={(sourcePath, href) => void openLinkedMarkdown(sourcePath, href)} onLinkToNotebook={() => void requestAddMarkdown(active.document)} onRevealInNotebook={() => linkedActivePage && revealSidebarItem(linkedActivePage.id)} />}
     </section>
     {explorerVisible && <div className="panel-resizer explorer-resizer" role="separator" aria-label="Resize Markdown Explorer" aria-orientation="vertical" onPointerDown={(event) => startPanelResize(event, 'explorer')} />}

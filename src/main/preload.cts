@@ -56,6 +56,10 @@ const api: NotesApi = {
     restore: () => invoke('backup:restore'),
     openFolder: () => invoke('backup:open-folder'),
   },
+  mcp: {
+    status: () => invoke('mcp:status'),
+    regenerateAccessLink: () => invoke('mcp:regenerate-access-link'),
+  },
   system: { openExternal: (url) => invoke('system:open-external', url), platform: () => process.platform },
   events: {
     onOpenExternal: (callback) => {
@@ -67,6 +71,11 @@ const api: NotesApi = {
       const listener = (_event: Electron.IpcRendererEvent, command: string) => callback(command);
       ipcRenderer.on('app-command', listener);
       return () => ipcRenderer.removeListener('app-command', listener);
+    },
+    onLibraryChanged: (callback) => {
+      const listener = () => callback();
+      ipcRenderer.on('library-changed', listener);
+      return () => ipcRenderer.removeListener('library-changed', listener);
     },
   },
 };

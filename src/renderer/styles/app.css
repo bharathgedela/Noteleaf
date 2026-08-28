@@ -449,8 +449,23 @@ body.image-resizing, body.image-resizing * { cursor: ew-resize !important; user-
 .setting-row input[type="range"] { width: 160px; accent-color: var(--accent); }
 .setting-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); }
 .settings-dialog footer { flex: none; padding: 12px 24px; border-top: 1px solid var(--border); }
-.settings-dialog footer button, .backup-settings button { border: 1px solid var(--border-strong); border-radius: 5px; padding: 6px 9px; background: var(--surface); color: var(--text); cursor: pointer; font-size: 11px; }
+.settings-dialog footer button, .backup-settings button, .mcp-settings button { border: 1px solid var(--border-strong); border-radius: 5px; padding: 6px 9px; background: var(--surface); color: var(--text); cursor: pointer; font-size: 11px; }
 .settings-dialog button:disabled { cursor: default; opacity: .5; }
+.mcp-settings { padding-bottom: 18px; border-top: 1px solid var(--border); background: color-mix(in srgb, var(--accent-soft) 42%, var(--surface)); }
+.mcp-badge { flex: none; border: 1px solid var(--border-strong); border-radius: 999px; padding: 4px 8px; background: var(--surface); color: var(--muted); font-size: 9px; font-weight: 650; }
+.mcp-badge.running { border-color: #72b899; background: #eaf8f1; color: #187653; }
+.mcp-badge.error { border-color: #df9b95; background: #fff0ee; color: var(--danger); }
+.mcp-connect-card { margin: 12px 24px 0; padding: 12px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); }
+.mcp-connect-card > div:first-child { display: flex; flex-direction: column; gap: 3px; }
+.mcp-connect-card strong { font-size: 11px; }
+.mcp-connect-card small { color: var(--faint); font-size: 9px; line-height: 1.4; }
+.mcp-connect-card code, .mcp-connect-card pre { display: block; overflow-x: auto; margin: 10px 0 0; border: 1px solid var(--border); border-radius: 5px; padding: 8px; background: var(--surface-soft); color: var(--muted); font: 9px/1.5 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre; }
+.mcp-connect-card code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mcp-actions { display: flex; gap: 7px; margin-top: 9px; }
+.mcp-message, .mcp-error, .mcp-note { margin: 9px 24px 0; font-size: 10px; line-height: 1.45; }
+.mcp-message { color: var(--accent); }
+.mcp-error { color: var(--danger); }
+.mcp-note { color: var(--faint); }
 .backup-settings { padding-bottom: 18px; background: var(--surface-soft); }
 .settings-section-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; padding: 20px 24px 12px; }
 .settings-section-title h3 { margin: 0 0 4px; font-size: 15px; }

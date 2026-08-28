@@ -3,6 +3,7 @@ import type { AppSettings, BackupFrequency, MarkdownViewMode, TaskStatus } from 
 import type { NotesRepository } from './database/repository.js';
 import type { FileService } from './files.js';
 import type { BackupService } from './backup/service.js';
+import type { McpHttpService } from './mcp/service.js';
 
 const CHANNELS = [
   'navigation:list', 'notebooks:create', 'notebooks:rename', 'notebooks:remove', 'notebooks:move',
@@ -13,6 +14,7 @@ const CHANNELS = [
   'files:open-linked', 'files:open-folder', 'files:save', 'files:save-as', 'files:draft', 'files:clear-draft', 'files:import', 'files:link', 'files:export', 'files:recent',
   'files:attachment', 'settings:get', 'settings:update', 'settings:open-data', 'system:open-external',
   'backup:status', 'backup:choose-folder', 'backup:create', 'backup:set-schedule', 'backup:restore', 'backup:open-folder',
+  'mcp:status', 'mcp:regenerate-access-link',
 ] as const;
 
 function text(value: unknown, label: string, max = 500): string {
@@ -40,7 +42,7 @@ function taskStatus(value: unknown): TaskStatus {
   return value;
 }
 
-export function registerIpc(repository: NotesRepository, files: FileService, backups: BackupService): () => void {
+export function registerIpc(repository: NotesRepository, files: FileService, backups: BackupService, mcp: McpHttpService): () => void {
   ipcMain.handle('navigation:list', () => repository.navigation());
   ipcMain.handle('notebooks:create', (_event, name?: string) => repository.createNotebook(name ? text(name, 'Name') : undefined));
   ipcMain.handle('notebooks:rename', (_event, rawId, name) => repository.renameNotebook(id(rawId), text(name, 'Name')));
@@ -88,7 +90,11 @@ export function registerIpc(repository: NotesRepository, files: FileService, bac
   ipcMain.handle('files:recent', () => repository.recentFiles());
   ipcMain.handle('files:attachment', (_event, pageId, dataUrl) => files.saveAttachment(id(pageId), source(dataUrl)));
   ipcMain.handle('settings:get', () => repository.getSettings());
-  ipcMain.handle('settings:update', (_event, patch: Partial<AppSettings>) => repository.updateSettings(patch));
+  ipcMain.handle('settings:update', async (_event, patch: Partial<AppSettings>) => {
+    const updated = repository.updateSettings(patch);
+    await mcp.configure(updated);
+    return repository.getSettings();
+  });
   ipcMain.handle('settings:open-data', () => files.openDataFolder());
   ipcMain.handle('backup:status', () => backups.status());
   ipcMain.handle('backup:choose-folder', () => backups.chooseFolder());
@@ -96,6 +102,8 @@ export function registerIpc(repository: NotesRepository, files: FileService, bac
   ipcMain.handle('backup:set-schedule', (_event, frequency: BackupFrequency, retention: number) => backups.setSchedule(frequency, retention));
   ipcMain.handle('backup:restore', () => backups.restore());
   ipcMain.handle('backup:open-folder', () => backups.openFolder());
+  ipcMain.handle('mcp:status', () => mcp.status());
+  ipcMain.handle('mcp:regenerate-access-link', () => mcp.regenerateAccessLink());
   ipcMain.handle('system:open-external', async (_event, url) => {
     const target = new URL(text(url, 'URL', 4096));
     if (target.protocol !== 'http:' && target.protocol !== 'https:') throw new Error('Unsupported URL');

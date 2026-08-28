@@ -27,9 +27,38 @@ const DEFAULT_SETTINGS: AppSettings = {
   backupRetention: 10,
   lastBackupAt: null,
   lastBackupError: null,
+  mcpEnabled: false,
+  mcpAllowWrites: false,
+  mcpPort: 37931,
+  mcpAccessToken: '',
 };
 
 type Row = Record<string, unknown>;
+
+export interface McpNotebookSummary {
+  id: string;
+  name: string;
+  position: number;
+  sectionCount: number;
+  pageCount: number;
+  updatedAt: string;
+}
+
+export interface McpSectionSummary {
+  id: string;
+  notebookId: string;
+  notebook: string;
+  name: string;
+  position: number;
+  pageCount: number;
+  updatedAt: string;
+}
+
+export interface McpPageSummary extends PageSummary {
+  notebookId: string;
+  notebook: string;
+  section: string;
+}
 
 function now(): string { return new Date().toISOString(); }
 function summary(row: Row): PageSummary {
@@ -175,6 +204,52 @@ You are ready—turn this guide into your own first note, or keep it nearby as a
     return { notebooks, favorites, recent, trash };
   }
 
+  mcpNotebooks(): McpNotebookSummary[] {
+    return (this.db.prepare(`SELECT n.id, n.name, n.position, n.updated_at,
+      COUNT(DISTINCT s.id) AS section_count,
+      COUNT(DISTINCT CASE WHEN p.is_deleted = 0 THEN p.id END) AS page_count
+      FROM notebooks n
+      LEFT JOIN sections s ON s.notebook_id = n.id
+      LEFT JOIN pages p ON p.section_id = s.id
+      GROUP BY n.id
+      ORDER BY n.position, n.name`).all() as Row[]).map((row) => ({
+      id: String(row.id), name: String(row.name), position: Number(row.position),
+      sectionCount: Number(row.section_count), pageCount: Number(row.page_count), updatedAt: String(row.updated_at),
+    }));
+  }
+
+  mcpSections(notebookId?: string): McpSectionSummary[] {
+    const sql = `SELECT s.id, s.notebook_id, n.name AS notebook, s.name, s.position, s.updated_at,
+      COUNT(CASE WHEN p.is_deleted = 0 THEN p.id END) AS page_count
+      FROM sections s JOIN notebooks n ON n.id = s.notebook_id
+      LEFT JOIN pages p ON p.section_id = s.id
+      ${notebookId ? 'WHERE s.notebook_id = ?' : ''}
+      GROUP BY s.id
+      ORDER BY n.position, s.position, s.name`;
+    const rows = notebookId ? this.db.prepare(sql).all(notebookId) : this.db.prepare(sql).all();
+    return (rows as Row[]).map((row) => ({
+      id: String(row.id), notebookId: String(row.notebook_id), notebook: String(row.notebook),
+      name: String(row.name), position: Number(row.position), pageCount: Number(row.page_count), updatedAt: String(row.updated_at),
+    }));
+  }
+
+  mcpPages(sectionId: string, includeChildPages = true, limit = 100, offset = 0): McpPageSummary[] {
+    const rows = this.db.prepare(`SELECT p.*, s.notebook_id, s.name AS section, n.name AS notebook
+      FROM pages p JOIN sections s ON s.id = p.section_id JOIN notebooks n ON n.id = s.notebook_id
+      WHERE p.section_id = ? AND p.is_deleted = 0 ${includeChildPages ? '' : 'AND p.sidebar_visible = 1'}
+      ORDER BY p.position, p.title LIMIT ? OFFSET ?`).all(sectionId, Math.min(Math.max(limit, 1), 200), Math.max(offset, 0)) as Row[];
+    return rows.map((row) => ({
+      ...summary(row), notebookId: String(row.notebook_id), notebook: String(row.notebook), section: String(row.section),
+    }));
+  }
+
+  mcpPageLocation(id: string): McpPageSummary | undefined {
+    const row = this.db.prepare(`SELECT p.*, s.notebook_id, s.name AS section, n.name AS notebook
+      FROM pages p JOIN sections s ON s.id = p.section_id JOIN notebooks n ON n.id = s.notebook_id
+      WHERE p.id = ?`).get(id) as Row | undefined;
+    return row ? { ...summary(row), notebookId: String(row.notebook_id), notebook: String(row.notebook), section: String(row.section) } : undefined;
+  }
+
   createNotebook(name = 'New notebook'): NotebookTree {
     const id = randomUUID(); const timestamp = now();
     const pos = (this.db.prepare('SELECT COALESCE(MAX(position), -1) + 1 AS p FROM notebooks').get() as { p: number }).p;
@@ -255,13 +330,16 @@ You are ready—turn this guide into your own first note, or keep it nearby as a
   }
   getPage(id: string): Page {
     this.db.prepare('UPDATE pages SET last_opened_at = ? WHERE id = ?').run(now(), id);
+    return this.readPage(id);
+  }
+  readPage(id: string): Page {
     const row = this.db.prepare('SELECT * FROM pages WHERE id = ?').get(id) as Row | undefined;
     if (!row) throw new Error('Page not found');
     return page(row);
   }
   savePage(id: string, input: { title: string; contentHtml: string; contentMarkdown: string }): Page {
     this.db.prepare('UPDATE pages SET title = ?, content_html = ?, content_markdown = ?, updated_at = ? WHERE id = ?').run(input.title, input.contentHtml, input.contentMarkdown, now(), id);
-    return this.getPage(id);
+    return this.readPage(id);
   }
   renamePage(id: string, title: string): void { this.db.prepare('UPDATE pages SET title = ?, updated_at = ? WHERE id = ?').run(title, now(), id); }
   trashPage(id: string): void { this.db.prepare('UPDATE pages SET is_deleted = 1, updated_at = ? WHERE id = ?').run(now(), id); }

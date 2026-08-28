@@ -6,7 +6,7 @@
 
 Noteleaf is a polished, local-first notebook, daily task tracker, and Markdown workspace for Windows and macOS. Notes stay on your computer, save automatically, and can be protected with portable backups in a local, OneDrive, or Google Drive-synced folder.
 
-Current release: **1.0.5**
+Current release: **1.1.0**
 
 See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
@@ -22,6 +22,9 @@ See [CHANGELOG.md](CHANGELOG.md) for release notes.
 - Search across the local library, use focus mode, and switch efficiently from the keyboard.
 - Create one-click backups and schedule hourly, daily, or weekly backups with configurable retention.
 - Restore integrity-checked `.notesbackup` archives after an automatic safety backup.
+- Connect Claude, ChatGPT, or another compatible client through the built-in MCP server to search, read, and—when explicitly enabled—update notes and daily tasks.
+
+See [docs/mcp.md](docs/mcp.md) for MCP tools, Claude configuration, ChatGPT tunnel setup, and the security model.
 
 ## Keyboard shortcuts
 

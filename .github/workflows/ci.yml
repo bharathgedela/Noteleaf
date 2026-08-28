@@ -46,8 +46,10 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
+      - run: npm audit --omit=dev
       - run: npm run license:audit
       - run: npm run build
+      - run: npm run mcp:smoke
 
   notices:
     runs-on: windows-latest

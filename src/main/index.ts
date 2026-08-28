@@ -8,6 +8,7 @@ import { FileService } from './files.js';
 import { registerIpc } from './ipc.js';
 import { applyPendingRestore, BackupService } from './backup/service.js';
 import { migrateLegacyAppData } from './app-data.js';
+import { McpHttpService } from './mcp/service.js';
 
 const APP_NAME = 'Noteleaf';
 const mainDirectory = fileURLToPath(new URL('.', import.meta.url));
@@ -15,6 +16,7 @@ let window: BrowserWindow | null = null;
 let repository: NotesRepository | null = null;
 let files: FileService | null = null;
 let backups: BackupService | null = null;
+let mcpService: McpHttpService | null = null;
 let queuedPath: string | undefined;
 
 function startupLog(message: string, error?: unknown): void {
@@ -98,6 +100,7 @@ async function createWindow(): Promise<void> {
     const current = window?.webContents.getURL();
     if (url !== current) event.preventDefault();
   });
+  window.on('focus', () => window?.webContents.send('library-changed'));
   startupLog('BrowserWindow created');
   if (process.env.VITE_DEV_SERVER_URL) await window.loadURL(process.env.VITE_DEV_SERVER_URL);
   else await window.loadFile(join(mainDirectory, '..', 'renderer', 'index.html'));
@@ -124,8 +127,10 @@ else {
     startupLog('Database opened');
     files = new FileService(repository, dataDirectory);
     backups = new BackupService(repository, dataDirectory);
-    registerIpc(repository, files, backups);
+    mcpService = new McpHttpService(repository, files, () => window?.webContents.send('library-changed'));
+    registerIpc(repository, files, backups, mcpService);
     backups.startScheduler();
+    await mcpService.configure();
     protocol.handle('notes-asset', (request) => {
       const parsed = new URL(request.url);
       const candidate = join(dataDirectory, 'attachments', parsed.hostname, ...parsed.pathname.split('/').filter(Boolean));
@@ -144,8 +149,8 @@ else {
     dialog.showErrorBox('Noteleaf could not start', error instanceof Error ? error.message : 'An unexpected startup error occurred.');
     app.quit();
   });
-}
 
-app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
-app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) void createWindow(); });
-app.on('before-quit', () => { backups?.stop(); repository?.close(); });
+  app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
+  app.on('activate', () => { if (BrowserWindow.getAllWindows().length === 0) void createWindow(); });
+  app.on('before-quit', () => { backups?.stop(); void mcpService?.stop(); repository?.close(); });
+}

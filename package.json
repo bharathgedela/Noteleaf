@@ -1,6 +1,6 @@
 {
   "name": "noteleaf-desktop",
-  "version": "1.0.5",
+  "version": "1.1.0",
   "private": true,
   "author": "Bharath Kumar Gedela",
   "license": "Apache-2.0",
@@ -13,7 +13,13 @@
   "bugs": {
     "url": "https://github.com/bharathgedela/Noteleaf/issues"
   },
-  "keywords": ["noteleaf", "notes", "markdown", "electron", "local-first"],
+  "keywords": [
+    "noteleaf",
+    "notes",
+    "markdown",
+    "electron",
+    "local-first"
+  ],
   "type": "module",
   "main": "dist/main/index.js",
   "scripts": {
@@ -24,6 +30,7 @@
     "lint": "eslint . --max-warnings=0",
     "test": "node scripts/run-tests.mjs",
     "test:watch": "vitest --config vitest.config.ts",
+    "mcp:smoke": "node scripts/smoke-mcp.mjs",
     "license:audit": "node scripts/audit-licenses.mjs",
     "license:notices": "node scripts/generate-third-party-notices.mjs",
     "icons": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/create-icon.ps1",
@@ -34,6 +41,7 @@
     "dist:win": "npm run build && electron-builder --win nsis --x64 --publish never"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
     "@tiptap/extension-code-block-lowlight": "^3.30.3",
     "@tiptap/extension-image": "^3.4.2",
     "@tiptap/extension-link": "^3.4.2",
@@ -63,6 +71,7 @@
     "shiki": "^3.12.2",
     "turndown": "^7.2.0",
     "turndown-plugin-gfm": "^1.0.2",
+    "zod": "^4.4.3",
     "zustand": "^5.0.8"
   },
   "devDependencies": {
@@ -78,7 +87,7 @@
     "@vitejs/plugin-react": "^5.0.2",
     "concurrently": "^9.2.1",
     "cross-env": "^10.0.0",
-    "electron": "^37.4.0",
+    "electron": "^39.8.10",
     "electron-builder": "^26.0.12",
     "eslint": "^9.34.0",
     "eslint-plugin-react-hooks": "^5.2.0",
@@ -107,10 +116,22 @@
       "THIRD_PARTY_LICENSES.txt"
     ],
     "extraResources": [
-      { "from": "LICENSE", "to": "licenses/LICENSE" },
-      { "from": "NOTICE", "to": "licenses/NOTICE" },
-      { "from": "THIRD_PARTY_NOTICES.md", "to": "licenses/THIRD_PARTY_NOTICES.md" },
-      { "from": "THIRD_PARTY_LICENSES.txt", "to": "licenses/THIRD_PARTY_LICENSES.txt" }
+      {
+        "from": "LICENSE",
+        "to": "licenses/LICENSE"
+      },
+      {
+        "from": "NOTICE",
+        "to": "licenses/NOTICE"
+      },
+      {
+        "from": "THIRD_PARTY_NOTICES.md",
+        "to": "licenses/THIRD_PARTY_NOTICES.md"
+      },
+      {
+        "from": "THIRD_PARTY_LICENSES.txt",
+        "to": "licenses/THIRD_PARTY_LICENSES.txt"
+      }
     ],
     "asarUnpack": [
       "node_modules/better-sqlite3/**/*"
