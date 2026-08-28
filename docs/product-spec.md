@@ -8,7 +8,7 @@ The workspace uses resizable notebook and Markdown Explorer panels whose widths 
 
 Pages created explicitly with a section's `+` control are sidebar pages. Pages created with the editor's `/ → Page` command prompt for a name and become inline child pages: that name is both the page heading and inline link text. Child pages remain stored inside the same notebook and are searchable and backed up, but they do not appear in the section tree, Favorites, Recent, or Trash. Following an internal page link navigates within the current tab; Back and Forward return through that tab's page history.
 
-Notebook and section overflow menus expose creation and permanent deletion. Deleting either container requires confirmation and cascades to both sidebar and inline child pages. Recent pages are collapsible.
+Notebook and section overflow menus expose creation and permanent deletion. Deleting either container requires confirmation and cascades to both sidebar and inline child pages. Recent pages are collapsed by default. Drag handles allow notebooks, sections, and sidebar pages to be reordered, including moving sections between notebooks and pages between sections.
 
 Pasted and uploaded images are selectable editor nodes. Selecting an image reveals resize handles on its left and right edges and corners; dragging a handle changes the image width while preserving its aspect ratio. The responsive width is stored with the note and represented in its generated Markdown so Edit and Read modes remain consistent.
 

@@ -72,7 +72,7 @@ function createMenu(): void {
     { label: 'File', submenu: fileMenu },
     { label: 'Edit', submenu: [
       { role: 'undo' }, { role: 'redo' }, { type: 'separator' }, { role: 'cut' }, { role: 'copy' }, { role: 'paste' }, { role: 'selectAll' },
-      { type: 'separator' }, { label: 'Quick Open', accelerator: 'CmdOrCtrl+P', click: () => sendCommand('quick-open') },
+      { type: 'separator' }, { label: 'Search Notes', accelerator: 'CmdOrCtrl+F', click: () => sendCommand('quick-open') },
     ] },
     { label: 'View', submenu: [{ role: 'reload' }, { role: 'toggleDevTools' }, { type: 'separator' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }] },
     { label: 'Window', submenu: [{ role: 'minimize' }, ...(isMac ? [{ role: 'zoom' as const }] : []), { role: 'close' }] },

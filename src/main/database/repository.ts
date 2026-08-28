@@ -118,6 +118,15 @@ export class NotesRepository {
     this.db.prepare('DELETE FROM notebooks WHERE id = ?').run(id);
     return pages;
   }
+  moveNotebook(id: string, position: number): void {
+    this.db.transaction(() => {
+      const ids = (this.db.prepare('SELECT id FROM notebooks WHERE id <> ? ORDER BY position, name').all(id) as Array<{ id: string }>).map((row) => row.id);
+      ids.splice(Math.min(position, ids.length), 0, id);
+      const update = this.db.prepare('UPDATE notebooks SET position = ?, updated_at = ? WHERE id = ?');
+      const timestamp = now();
+      ids.forEach((notebookId, index) => update.run(index, timestamp, notebookId));
+    })();
+  }
 
   createSection(notebookId: string, name = 'New section'): SectionTree {
     const id = randomUUID(); const timestamp = now();
@@ -130,6 +139,22 @@ export class NotesRepository {
     const pages = (this.db.prepare('SELECT id FROM pages WHERE section_id = ?').all(id) as Array<{ id: string }>).map((row) => row.id);
     this.db.prepare('DELETE FROM sections WHERE id = ?').run(id);
     return pages;
+  }
+  moveSection(id: string, notebookId: string, position: number): void {
+    this.db.transaction(() => {
+      const existing = this.db.prepare('SELECT notebook_id FROM sections WHERE id = ?').get(id) as { notebook_id: string } | undefined;
+      if (!existing) throw new Error('Section not found');
+      const sourceNotebookId = existing.notebook_id;
+      this.db.prepare('UPDATE sections SET notebook_id = ?, updated_at = ? WHERE id = ?').run(notebookId, now(), id);
+      const resequence = (parentId: string, movedId?: string, targetPosition?: number) => {
+        const ids = (this.db.prepare('SELECT id FROM sections WHERE notebook_id = ? AND id <> ? ORDER BY position, name').all(parentId, movedId || '') as Array<{ id: string }>).map((row) => row.id);
+        if (movedId !== undefined && targetPosition !== undefined) ids.splice(Math.min(targetPosition, ids.length), 0, movedId);
+        const update = this.db.prepare('UPDATE sections SET position = ? WHERE id = ?');
+        ids.forEach((sectionId, index) => update.run(index, sectionId));
+      };
+      if (sourceNotebookId !== notebookId) resequence(sourceNotebookId);
+      resequence(notebookId, id, position);
+    })();
   }
 
   createPage(sectionId: string, title = 'Untitled', options: { sidebarVisible?: boolean; parentPageId?: string } = {}): Page {
@@ -162,8 +187,18 @@ export class NotesRepository {
   toggleFavorite(id: string): void { this.db.prepare('UPDATE pages SET is_favorite = CASE is_favorite WHEN 0 THEN 1 ELSE 0 END, updated_at = ? WHERE id = ?').run(now(), id); }
   movePage(id: string, sectionId: string, position: number): void {
     this.db.transaction(() => {
-      this.db.prepare('UPDATE pages SET position = position + 1 WHERE section_id = ? AND position >= ? AND is_deleted = 0').run(sectionId, position);
+      const existing = this.db.prepare('SELECT section_id FROM pages WHERE id = ?').get(id) as { section_id: string } | undefined;
+      if (!existing) throw new Error('Page not found');
+      const sourceSectionId = existing.section_id;
       this.db.prepare('UPDATE pages SET section_id = ?, position = ?, updated_at = ? WHERE id = ?').run(sectionId, position, now(), id);
+      const resequence = (parentId: string, movedId?: string, targetPosition?: number) => {
+        const ids = (this.db.prepare(`SELECT id FROM pages WHERE section_id = ? AND id <> ? AND is_deleted = 0 AND sidebar_visible = 1 ORDER BY position, title`).all(parentId, movedId || '') as Array<{ id: string }>).map((row) => row.id);
+        if (movedId !== undefined && targetPosition !== undefined) ids.splice(Math.min(targetPosition, ids.length), 0, movedId);
+        const update = this.db.prepare('UPDATE pages SET position = ? WHERE id = ?');
+        ids.forEach((pageId, index) => update.run(index, pageId));
+      };
+      if (sourceSectionId !== sectionId) resequence(sourceSectionId);
+      resequence(sectionId, id, position);
     })();
   }
 

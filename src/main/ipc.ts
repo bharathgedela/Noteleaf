@@ -5,8 +5,8 @@ import type { FileService } from './files.js';
 import type { BackupService } from './backup/service.js';
 
 const CHANNELS = [
-  'navigation:list', 'notebooks:create', 'notebooks:rename', 'notebooks:remove',
-  'sections:create', 'sections:rename', 'sections:remove', 'pages:create', 'pages:get',
+  'navigation:list', 'notebooks:create', 'notebooks:rename', 'notebooks:remove', 'notebooks:move',
+  'sections:create', 'sections:rename', 'sections:remove', 'sections:move', 'pages:create', 'pages:get',
   'pages:save', 'pages:rename', 'pages:trash', 'pages:restore', 'pages:remove', 'pages:empty-trash',
   'pages:favorite', 'pages:move', 'search:full', 'search:quick', 'files:open',
   'tasks:list', 'tasks:create', 'tasks:update', 'tasks:remove',
@@ -45,9 +45,11 @@ export function registerIpc(repository: NotesRepository, files: FileService, bac
   ipcMain.handle('notebooks:create', (_event, name?: string) => repository.createNotebook(name ? text(name, 'Name') : undefined));
   ipcMain.handle('notebooks:rename', (_event, rawId, name) => repository.renameNotebook(id(rawId), text(name, 'Name')));
   ipcMain.handle('notebooks:remove', (_event, rawId) => repository.removeNotebook(id(rawId)));
+  ipcMain.handle('notebooks:move', (_event, rawId, position) => repository.moveNotebook(id(rawId), Math.max(0, Number(position) || 0)));
   ipcMain.handle('sections:create', (_event, notebookId, name?: string) => repository.createSection(id(notebookId), name ? text(name, 'Name') : undefined));
   ipcMain.handle('sections:rename', (_event, rawId, name) => repository.renameSection(id(rawId), text(name, 'Name')));
   ipcMain.handle('sections:remove', (_event, rawId) => repository.removeSection(id(rawId)));
+  ipcMain.handle('sections:move', (_event, rawId, notebookId, position) => repository.moveSection(id(rawId), id(notebookId), Math.max(0, Number(position) || 0)));
   ipcMain.handle('pages:create', (_event, sectionId, title?: string, options?: { sidebarVisible?: unknown; parentPageId?: unknown }) => repository.createPage(id(sectionId), title ? text(title, 'Title') : undefined, {
     sidebarVisible: options?.sidebarVisible !== false,
     parentPageId: options?.parentPageId ? id(options.parentPageId) : undefined,

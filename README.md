@@ -15,6 +15,8 @@ A local-first notebook and Markdown reader/editor for macOS and Windows.
 - Find any open document from the polished all-tabs menu
 - Plan each day in a dedicated Tasks workspace with To do, In progress, and Done states
 - Rename, reschedule, complete, and track progress for tasks without creating note tabs
+- Toggle Tasks and the current note with `Ctrl+T`, and search all notes with `Ctrl+F`
+- Drag notebooks, sections, and sidebar pages to save a custom order or move them between containers
 - Create a backup from the top toolbar and automatically back up every hour
 - Back up the local notes library to a local or synced folder
 

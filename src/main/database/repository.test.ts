@@ -73,6 +73,27 @@ describe('NotesRepository', () => {
     expect(() => repository!.getPage(sourcePage.id)).toThrow();
   });
 
+  it('persists drag ordering for notebooks, sections, and sidebar pages', () => {
+    const notebook = repository!.createNotebook('Reorder me');
+    const otherNotebook = repository!.createNotebook('Move sections here');
+    repository!.moveNotebook(otherNotebook.id, 0);
+    expect(repository!.navigation().notebooks[0].id).toBe(otherNotebook.id);
+
+    const firstSection = repository!.createSection(notebook.id, 'First');
+    const secondSection = repository!.createSection(notebook.id, 'Second');
+    repository!.moveSection(secondSection.id, notebook.id, 0);
+    expect(repository!.navigation().notebooks.find((item) => item.id === notebook.id)?.sections[0].id).toBe(secondSection.id);
+    repository!.moveSection(secondSection.id, otherNotebook.id, 0);
+    expect(repository!.navigation().notebooks.find((item) => item.id === otherNotebook.id)?.sections[0].id).toBe(secondSection.id);
+
+    const firstPage = repository!.createPage(firstSection.id, 'First page');
+    const secondPage = repository!.createPage(firstSection.id, 'Second page');
+    repository!.movePage(secondPage.id, firstSection.id, 0);
+    expect(repository!.navigation().notebooks.find((item) => item.id === notebook.id)?.sections.find((item) => item.id === firstSection.id)?.pages[0].id).toBe(secondPage.id);
+    repository!.movePage(firstPage.id, secondSection.id, 0);
+    expect(repository!.navigation().notebooks.find((item) => item.id === otherNotebook.id)?.sections[0].pages[0].id).toBe(firstPage.id);
+  });
+
   it('permanently removes every trashed page at once', () => {
     const section = repository!.navigation().notebooks[0].sections[0];
     const first = repository!.createPage(section.id, 'Old draft');

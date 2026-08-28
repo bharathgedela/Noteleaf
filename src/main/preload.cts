@@ -8,11 +8,13 @@ const api: NotesApi = {
     create: (name) => invoke('notebooks:create', name),
     rename: (id, name) => invoke('notebooks:rename', id, name),
     remove: (id) => invoke('notebooks:remove', id),
+    move: (id, position) => invoke('notebooks:move', id, position),
   },
   sections: {
     create: (notebookId, name) => invoke('sections:create', notebookId, name),
     rename: (id, name) => invoke('sections:rename', id, name),
     remove: (id) => invoke('sections:remove', id),
+    move: (id, notebookId, position) => invoke('sections:move', id, notebookId, position),
   },
   pages: {
     create: (sectionId, title, options) => invoke('pages:create', sectionId, title, options),

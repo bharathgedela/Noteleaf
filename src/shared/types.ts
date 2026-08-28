@@ -128,11 +128,13 @@ export interface NotesApi {
     create(name?: string): Promise<NotebookTree>;
     rename(id: Id, name: string): Promise<void>;
     remove(id: Id): Promise<Id[]>;
+    move(id: Id, position: number): Promise<void>;
   };
   sections: {
     create(notebookId: Id, name?: string): Promise<SectionTree>;
     rename(id: Id, name: string): Promise<void>;
     remove(id: Id): Promise<Id[]>;
+    move(id: Id, notebookId: Id, position: number): Promise<void>;
   };
   pages: {
     create(sectionId: Id, title?: string, options?: { sidebarVisible?: boolean; parentPageId?: Id }): Promise<Page>;
