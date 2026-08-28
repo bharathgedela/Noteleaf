@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { EditorContent, NodeViewWrapper, ReactNodeViewRenderer, useEditor, type NodeViewProps } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import CodeBlock from '@tiptap/extension-code-block';
+import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
 import Link from '@tiptap/extension-link';
 import Image from '@tiptap/extension-image';
 import Placeholder from '@tiptap/extension-placeholder';
+import { TextStyleKit } from '@tiptap/extension-text-style';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
 import { Table } from '@tiptap/extension-table';
@@ -13,7 +14,23 @@ import TableHeader from '@tiptap/extension-table-header';
 import TableCell from '@tiptap/extension-table-cell';
 import TurndownService from 'turndown';
 import { gfm } from 'turndown-plugin-gfm';
-import { Bold, CheckSquare, Code, FilePlus2, Heading1, Heading2, Heading3, ImagePlus, Italic, Link2, List, ListOrdered, Minus, Quote, Table2, Type } from 'lucide-react';
+import { common, createLowlight } from 'lowlight';
+import { AArrowDown, AArrowUp, Bold, CheckSquare, Code, FilePlus2, Heading1, Heading2, Heading3, ImagePlus, Italic, Link2, List, ListOrdered, Minus, Palette, Quote, Table2, Type } from 'lucide-react';
+
+const lowlight = createLowlight(common);
+const fontSizes = [12, 14, 16, 18, 20, 24, 28, 32];
+const textColors = [
+  { name: 'Default', value: '' },
+  { name: 'Slate', value: '#475569' },
+  { name: 'Red', value: '#dc2626' },
+  { name: 'Orange', value: '#ea580c' },
+  { name: 'Amber', value: '#ca8a04' },
+  { name: 'Green', value: '#16a34a' },
+  { name: 'Teal', value: '#0d9488' },
+  { name: 'Blue', value: '#2563eb' },
+  { name: 'Violet', value: '#7c3aed' },
+  { name: 'Pink', value: '#db2777' },
+];
 
 const turndown = new TurndownService({ headingStyle: 'atx', codeBlockStyle: 'fenced', bulletListMarker: '-' });
 turndown.use(gfm);
@@ -111,9 +128,9 @@ const ResizableImage = Image.extend({
   },
 });
 
-const LinkableCodeBlock = CodeBlock.extend({
-  marks: 'link',
-});
+const StyledCodeBlock = CodeBlockLowlight.extend({
+  marks: 'link textStyle',
+}).configure({ lowlight, enableTabIndentation: true, tabSize: 2 });
 
 interface RichEditorProps {
   pageId: string;
@@ -131,6 +148,9 @@ export function RichEditor({ pageId, initialHtml, spellcheck, onChange, onCreate
   const [pageTitleOpen, setPageTitleOpen] = useState(false);
   const [pageTitle, setPageTitle] = useState('');
   const [pageCreating, setPageCreating] = useState(false);
+  const [selectionActive, setSelectionActive] = useState(false);
+  const [toolbarRevision, setToolbarRevision] = useState(0);
+  const [colorOpen, setColorOpen] = useState(false);
   const slashOpenRef = useRef(false);
   const slashQueryRef = useRef('');
   const slashSelectedRef = useRef(0);
@@ -138,10 +158,12 @@ export function RichEditor({ pageId, initialHtml, spellcheck, onChange, onCreate
   const moveSlashSelectionRef = useRef<((direction: number) => void) | null>(null);
   const imageInput = useRef<HTMLInputElement>(null);
   const pageTitleInput = useRef<HTMLInputElement>(null);
+  const colorControl = useRef<HTMLDivElement>(null);
   const extensions = useMemo(() => [
     StarterKit.configure({ link: false, codeBlock: false }),
-    LinkableCodeBlock,
+    StyledCodeBlock,
     Link.configure({ openOnClick: false, autolink: true, defaultProtocol: 'https', protocols: ['http', 'https', 'notes'] }),
+    TextStyleKit.configure({ backgroundColor: false, fontFamily: false, lineHeight: false }),
     ResizableImage.configure({ inline: false, allowBase64: false }), Placeholder.configure({ placeholder: "Write something, or type '/' for commands…" }),
     TaskList, TaskItem.configure({ nested: true }), Table.configure({ resizable: true }), TableRow, TableHeader, TableCell,
   ], []);
@@ -213,6 +235,38 @@ export function RichEditor({ pageId, initialHtml, spellcheck, onChange, onCreate
     },
   }, [pageId]);
   useEffect(() => { editor?.setOptions({ editorProps: { attributes: { class: 'prose-editor', spellcheck: String(spellcheck) } } }); }, [editor, spellcheck]);
+  useEffect(() => {
+    if (!editor) return;
+    const updateToolbar = () => {
+      const { from, to } = editor.state.selection;
+      setSelectionActive(from !== to);
+      setToolbarRevision((revision) => revision + 1);
+    };
+    updateToolbar();
+    editor.on('selectionUpdate', updateToolbar);
+    editor.on('transaction', updateToolbar);
+    editor.on('focus', updateToolbar);
+    editor.on('blur', updateToolbar);
+    return () => {
+      editor.off('selectionUpdate', updateToolbar);
+      editor.off('transaction', updateToolbar);
+      editor.off('focus', updateToolbar);
+      editor.off('blur', updateToolbar);
+    };
+  }, [editor]);
+  useEffect(() => {
+    if (!colorOpen) return;
+    const close = (event: PointerEvent) => {
+      if (!colorControl.current?.contains(event.target as Node)) setColorOpen(false);
+    };
+    const closeOnEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setColorOpen(false); };
+    document.addEventListener('pointerdown', close);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('pointerdown', close);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [colorOpen]);
   useEffect(() => {
     if (!pageTitleOpen) return;
     const input = pageTitleInput.current;
@@ -300,14 +354,43 @@ export function RichEditor({ pageId, initialHtml, spellcheck, onChange, onCreate
     slashSelectedRef.current = next;
     setSlashSelected(next);
   };
+  void toolbarRevision;
+  const textStyle = editor.getAttributes('textStyle') as { color?: string; fontSize?: string };
+  const parsedFontSize = Number.parseInt(textStyle.fontSize || '', 10);
+  const currentFontSize = Number.isFinite(parsedFontSize) ? parsedFontSize : 16;
+  const changeFontSize = (direction: -1 | 1) => {
+    const currentIndex = fontSizes.reduce((closest, size, index) => Math.abs(size - currentFontSize) < Math.abs(fontSizes[closest] - currentFontSize) ? index : closest, 0);
+    const nextIndex = Math.max(0, Math.min(fontSizes.length - 1, currentIndex + direction));
+    editor.chain().focus().setFontSize(`${fontSizes[nextIndex]}px`).run();
+  };
+  const setTextColor = (color: string) => {
+    const chain = editor.chain().focus();
+    if (color) chain.setColor(color).run(); else chain.unsetColor().run();
+    setColorOpen(false);
+  };
   const action = (label: string, active: boolean, run: () => void, icon: React.ReactNode) => <button type="button" title={label} aria-label={label} className={active ? 'active' : ''} onMouseDown={(e) => { e.preventDefault(); run(); }}>{icon}</button>;
   return <div className="editor-shell">
     <input ref={imageInput} className="visually-hidden" type="file" accept="image/png,image/jpeg,image/gif,image/webp" onChange={(event) => { addImage(event.target.files?.[0]); event.target.value = ''; }} />
-    <div className="format-bar" aria-label="Text formatting">
+    <div className={`format-bar${selectionActive || editor.isFocused || colorOpen ? ' is-active' : ''}`} aria-label="Text formatting">
       {action('Bold', editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), <Bold size={15} />)}
       {action('Italic', editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), <Italic size={15} />)}
       {action('Inline code', editor.isActive('code'), () => editor.chain().focus().toggleCode().run(), <Code size={15} />)}
       {action('Link', editor.isActive('link'), setLink, <Link2 size={15} />)}
+      <span />
+      {action(`Decrease font size (currently ${currentFontSize}px)`, false, () => changeFontSize(-1), <AArrowDown size={15} />)}
+      <button type="button" className="font-size-value" title="Reset font size" aria-label={`Reset font size, currently ${currentFontSize} pixels`} onMouseDown={(event) => { event.preventDefault(); editor.chain().focus().unsetFontSize().run(); }}>{currentFontSize}</button>
+      {action(`Increase font size (currently ${currentFontSize}px)`, false, () => changeFontSize(1), <AArrowUp size={15} />)}
+      <div className="color-control" ref={colorControl}>
+        <button type="button" className={colorOpen ? 'active color-button' : 'color-button'} title="Text color" aria-label="Choose text color" aria-expanded={colorOpen} onMouseDown={(event) => { event.preventDefault(); setColorOpen((open) => !open); }}>
+          <Palette size={15} /><i style={{ backgroundColor: textStyle.color || 'currentColor' }} />
+        </button>
+        {colorOpen && <div className="color-palette" role="menu" aria-label="Text colors">
+          <strong>Text color</strong>
+          <div>{textColors.map((color) => <button key={color.name} type="button" role="menuitem" title={color.name} aria-label={color.name} className={(textStyle.color || '') === color.value ? 'selected' : ''} onMouseDown={(event) => { event.preventDefault(); setTextColor(color.value); }}>
+            {color.value ? <i style={{ backgroundColor: color.value }} /> : <i className="default-color">A</i>}
+          </button>)}</div>
+        </div>}
+      </div>
       <span />
       {action('Heading 1', editor.isActive('heading', { level: 1 }), () => editor.chain().focus().toggleHeading({ level: 1 }).run(), <Heading1 size={15} />)}
       {action('Heading 2', editor.isActive('heading', { level: 2 }), () => editor.chain().focus().toggleHeading({ level: 2 }).run(), <Heading2 size={15} />)}

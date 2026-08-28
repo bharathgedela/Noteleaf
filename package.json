@@ -1,6 +1,6 @@
 {
   "name": "notes-desktop",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "private": true,
   "author": "Bharath Kumar Gedela",
   "description": "A calm, local-first notebook and Markdown reader for macOS and Windows.",
@@ -21,7 +21,7 @@
     "dist:win": "npm run build && electron-builder --win nsis --x64"
   },
   "dependencies": {
-    "@tiptap/extension-code-block": "^3.4.2",
+    "@tiptap/extension-code-block-lowlight": "^3.30.3",
     "@tiptap/extension-image": "^3.4.2",
     "@tiptap/extension-link": "^3.4.2",
     "@tiptap/extension-placeholder": "^3.4.2",
@@ -31,12 +31,14 @@
     "@tiptap/extension-table-row": "^3.4.2",
     "@tiptap/extension-task-item": "^3.4.2",
     "@tiptap/extension-task-list": "^3.4.2",
+    "@tiptap/extension-text-style": "^3.30.3",
     "@tiptap/pm": "^3.4.2",
     "@tiptap/react": "^3.4.2",
     "@tiptap/starter-kit": "^3.4.2",
     "better-sqlite3": "^12.2.0",
     "clsx": "^2.1.1",
     "gray-matter": "^4.0.3",
+    "lowlight": "^3.3.0",
     "lucide-react": "^0.468.0",
     "marked": "^16.2.1",
     "react": "^19.1.1",
@@ -44,8 +46,8 @@
     "react-markdown": "^10.1.0",
     "rehype-sanitize": "^6.0.0",
     "remark-gfm": "^4.0.1",
-    "shiki": "^3.12.2",
     "sanitize-html": "^2.17.0",
+    "shiki": "^3.12.2",
     "turndown": "^7.2.0",
     "turndown-plugin-gfm": "^1.0.2",
     "zustand": "^5.0.8"
@@ -91,7 +93,12 @@
     ],
     "fileAssociations": [
       {
-        "ext": ["md", "markdown", "mdown", "mkd"],
+        "ext": [
+          "md",
+          "markdown",
+          "mdown",
+          "mkd"
+        ],
         "name": "Markdown document",
         "description": "Markdown document",
         "role": "Editor"
@@ -107,7 +114,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "artifactName": "Notes-${version}-Setup.${ext}"
