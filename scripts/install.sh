@@ -13,16 +13,64 @@ dmg_path="$temporary_dir/$asset_name"
 checksums_path="$temporary_dir/SHA256SUMS.txt"
 mount_path="$temporary_dir/mount"
 mounted=0
+download_pid=""
 
 cleanup() {
+  if [ -n "$download_pid" ]; then kill "$download_pid" >/dev/null 2>&1 || true; fi
   if [ "$mounted" -eq 1 ]; then hdiutil detach "$mount_path" -quiet >/dev/null 2>&1 || true; fi
   rm -rf "$temporary_dir"
 }
 trap cleanup EXIT INT TERM
 
+download_with_percentage() {
+  download_url="$1"
+  output_path="$2"
+  total_bytes="$(
+    curl --proto '=https' --tlsv1.2 --fail --silent --show-error --head --location "$download_url" 2>/dev/null |
+      awk 'tolower($1) == "content-length:" { gsub("\r", "", $2); size = $2 } END { print size }'
+  )"
+
+  case "$total_bytes" in
+    ''|*[!0-9]*) total_bytes=0 ;;
+  esac
+
+  curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
+    "$download_url" --output "$output_path" &
+  download_pid=$!
+
+  if [ "$total_bytes" -gt 0 ]; then
+    total_mb=$(( (total_bytes + 1048575) / 1048576 ))
+    while kill -0 "$download_pid" 2>/dev/null; do
+      if [ -f "$output_path" ]; then
+        downloaded_bytes="$(wc -c < "$output_path" | tr -d ' ')"
+      else
+        downloaded_bytes=0
+      fi
+      percentage=$(( downloaded_bytes * 100 / total_bytes ))
+      [ "$percentage" -lt 100 ] || percentage=99
+      downloaded_mb=$(( downloaded_bytes / 1048576 ))
+      printf '\rDownloading: %3d%% (%d MB / %d MB)' "$percentage" "$downloaded_mb" "$total_mb"
+      sleep 1
+    done
+  fi
+
+  if wait "$download_pid"; then
+    download_pid=""
+    if [ "$total_bytes" -gt 0 ]; then
+      printf '\rDownloading: 100%% (%d MB / %d MB)\n' "$total_mb" "$total_mb"
+    else
+      echo "Download complete."
+    fi
+    return 0
+  fi
+
+  download_pid=""
+  printf '\n' >&2
+  return 1
+}
+
 echo "Downloading the latest Noteleaf release ($asset_name)..."
-if ! curl --proto '=https' --tlsv1.2 --fail --location --progress-bar \
-  "$release_base/$asset_name" --output "$dmg_path"; then
+if ! download_with_percentage "$release_base/$asset_name" "$dmg_path"; then
   echo "A published Noteleaf macOS release could not be downloaded. Check https://github.com/bharathgedela/notes_app/releases and try again." >&2
   exit 1
 fi
