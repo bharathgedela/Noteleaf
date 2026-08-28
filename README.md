@@ -53,7 +53,7 @@ Complete the displayed Noteleaf setup wizard.
 Run in Terminal. The script automatically selects Apple Silicon or Intel and installs Noteleaf in `~/Applications`:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/bharathgedela/notes_app/main/scripts/install.sh | sh
+curl -fsSL "https://raw.githubusercontent.com/bharathgedela/notes_app/main/scripts/install.sh?$(date +%s)" | sh
 ```
 
 The bootstrap scripts are readable in [`scripts/install.ps1`](scripts/install.ps1) and [`scripts/install.sh`](scripts/install.sh) before running them. Until public builds are Developer ID signed and notarized, macOS may require choosing **Open** from Finder's context menu on first launch; unsigned Windows builds may similarly display SmartScreen.
