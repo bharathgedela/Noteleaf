@@ -2,6 +2,7 @@
 set -eu
 
 release_base="https://github.com/bharathgedela/notes_app/releases/latest/download"
+release_api="https://api.github.com/repos/bharathgedela/notes_app/releases/latest"
 case "$(uname -m)" in
   arm64) asset_name="Noteleaf-arm64.dmg" ;;
   x86_64) asset_name="Noteleaf-x64.dmg" ;;
@@ -26,8 +27,16 @@ download_with_percentage() {
   download_url="$1"
   output_path="$2"
   total_bytes="$(
-    curl --proto '=https' --tlsv1.2 --fail --silent --show-error --head --location "$download_url" 2>/dev/null |
-      awk 'tolower($1) == "content-length:" { gsub("\r", "", $2); size = $2 } END { print size }'
+    curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location "$release_api" 2>/dev/null |
+      awk -v asset="$asset_name" '
+        index($0, "\"name\": \"" asset "\"") { matching_asset = 1 }
+        matching_asset && index($0, "\"size\":") {
+          gsub(/[^0-9]/, "", $0)
+          size = $0
+          matching_asset = 0
+        }
+        END { print size }
+      '
   )"
 
   case "$total_bytes" in
@@ -38,28 +47,33 @@ download_with_percentage() {
     "$download_url" --output "$output_path" &
   download_pid=$!
 
-  if [ "$total_bytes" -gt 0 ]; then
-    total_mb=$(( (total_bytes + 1048575) / 1048576 ))
-    while kill -0 "$download_pid" 2>/dev/null; do
-      if [ -f "$output_path" ]; then
-        downloaded_bytes="$(wc -c < "$output_path" | tr -d ' ')"
-      else
-        downloaded_bytes=0
-      fi
+  if [ "$total_bytes" -gt 0 ]; then total_mb=$(( (total_bytes + 1048575) / 1048576 )); fi
+  while kill -0 "$download_pid" 2>/dev/null; do
+    if [ -f "$output_path" ]; then
+      downloaded_bytes="$(wc -c < "$output_path" | tr -d ' ')"
+    else
+      downloaded_bytes=0
+    fi
+    downloaded_mb=$(( downloaded_bytes / 1048576 ))
+
+    if [ "$total_bytes" -gt 0 ]; then
       percentage=$(( downloaded_bytes * 100 / total_bytes ))
       [ "$percentage" -lt 100 ] || percentage=99
-      downloaded_mb=$(( downloaded_bytes / 1048576 ))
       printf '\rDownloading: %3d%% (%d MB / %d MB)' "$percentage" "$downloaded_mb" "$total_mb"
-      sleep 1
-    done
-  fi
+    else
+      printf '\rDownloaded: %d MB' "$downloaded_mb"
+    fi
+    sleep 1
+  done
 
   if wait "$download_pid"; then
     download_pid=""
     if [ "$total_bytes" -gt 0 ]; then
       printf '\rDownloading: 100%% (%d MB / %d MB)\n' "$total_mb" "$total_mb"
     else
-      echo "Download complete."
+      downloaded_bytes="$(wc -c < "$output_path" | tr -d ' ')"
+      downloaded_mb=$(( downloaded_bytes / 1048576 ))
+      printf '\rDownloaded: %d MB (complete)\n' "$downloaded_mb"
     fi
     return 0
   fi

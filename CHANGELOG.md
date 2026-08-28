@@ -4,7 +4,7 @@ All notable changes to Noteleaf are documented here.
 
 ## Unreleased
 
-- Shows a stable numeric percentage and downloaded/total size while the one-command macOS installer fetches the Noteleaf DMG.
+- Shows a stable numeric percentage and downloaded/total size while the one-command macOS installer fetches the Noteleaf DMG, using GitHub release metadata so macOS responses without `Content-Length` still report progress.
 - Keeps generated third-party notices synchronized with the application version in CI.
 
 ## 1.0.3 — 2026-08-28
