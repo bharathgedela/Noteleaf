@@ -10,7 +10,7 @@ const CHANNELS = [
   'pages:save', 'pages:rename', 'pages:trash', 'pages:restore', 'pages:remove', 'pages:empty-trash',
   'pages:favorite', 'pages:move', 'search:full', 'search:quick', 'files:open',
   'tasks:list', 'tasks:create', 'tasks:update', 'tasks:remove',
-  'files:open-linked', 'files:open-folder', 'files:save', 'files:save-as', 'files:draft', 'files:clear-draft', 'files:import', 'files:export', 'files:recent',
+  'files:open-linked', 'files:open-folder', 'files:save', 'files:save-as', 'files:draft', 'files:clear-draft', 'files:import', 'files:link', 'files:export', 'files:recent',
   'files:attachment', 'settings:get', 'settings:update', 'settings:open-data', 'system:open-external',
   'backup:status', 'backup:choose-folder', 'backup:create', 'backup:set-schedule', 'backup:restore', 'backup:open-folder',
 ] as const;
@@ -83,6 +83,7 @@ export function registerIpc(repository: NotesRepository, files: FileService, bac
   ipcMain.handle('files:draft', (_event, path, content) => repository.saveDraft(text(path, 'Path', 32767), source(content)));
   ipcMain.handle('files:clear-draft', (_event, path) => repository.clearDraft(text(path, 'Path', 32767)));
   ipcMain.handle('files:import', (_event, sectionId) => files.importMarkdown(id(sectionId)));
+  ipcMain.handle('files:link', (_event, sectionId, path?: string) => files.linkMarkdown(id(sectionId), path ? text(path, 'Path', 32767) : undefined));
   ipcMain.handle('files:export', (_event, pageId) => files.exportPage(repository.getPage(id(pageId))));
   ipcMain.handle('files:recent', () => repository.recentFiles());
   ipcMain.handle('files:attachment', (_event, pageId, dataUrl) => files.saveAttachment(id(pageId), source(dataUrl)));

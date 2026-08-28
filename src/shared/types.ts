@@ -45,6 +45,7 @@ export interface PageSummary {
   lastOpenedAt: string | null;
   isSidebarVisible: boolean;
   parentPageId: Id | null;
+  externalPath: string | null;
 }
 
 export interface SectionTree {
@@ -167,6 +168,7 @@ export interface NotesApi {
     persistDraft(path: string, content: string): Promise<void>;
     clearDraft(path: string): Promise<void>;
     importMarkdown(sectionId: Id): Promise<Page | null>;
+    linkMarkdown(sectionId: Id, path?: string): Promise<Page | null>;
     exportPage(pageId: Id): Promise<string | null>;
     recent(): Promise<Array<{ path: string; filename: string; lastOpenedAt: string; viewMode: MarkdownViewMode }>>;
     saveAttachment(pageId: Id, dataUrl: string): Promise<string>;

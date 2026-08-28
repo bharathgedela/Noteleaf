@@ -40,6 +40,7 @@ function summary(row: Row): PageSummary {
     lastOpenedAt: row.last_opened_at ? String(row.last_opened_at) : null,
     isSidebarVisible: Boolean(row.sidebar_visible),
     parentPageId: row.parent_page_id ? String(row.parent_page_id) : null,
+    externalPath: row.external_path ? String(row.external_path) : null,
   };
 }
 function page(row: Row): Page {
@@ -229,6 +230,27 @@ You are ready—turn this guide into your own first note, or keep it nearby as a
     const id = randomUUID(); const timestamp = now();
     const pos = (this.db.prepare('SELECT COALESCE(MAX(position), -1) + 1 AS p FROM pages WHERE section_id = ?').get(sectionId) as { p: number }).p;
     this.db.prepare(`INSERT INTO pages(id, section_id, title, position, created_at, updated_at, last_opened_at, sidebar_visible, parent_page_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, sectionId, title, pos, timestamp, timestamp, timestamp, options.sidebarVisible === false ? 0 : 1, options.parentPageId || null);
+    return this.getPage(id);
+  }
+  linkExternalPage(sectionId: string, title: string, externalPath: string): Page {
+    const existing = this.db.prepare('SELECT id, section_id FROM pages WHERE external_path = ? COLLATE NOCASE LIMIT 1').get(externalPath) as { id: string; section_id: string } | undefined;
+    if (existing) {
+      const position = existing.section_id === sectionId
+        ? undefined
+        : (this.db.prepare('SELECT COALESCE(MAX(position), -1) + 1 AS p FROM pages WHERE section_id = ?').get(sectionId) as { p: number }).p;
+      this.db.prepare(`UPDATE pages
+        SET section_id = ?, title = ?, position = COALESCE(?, position), sidebar_visible = 1,
+            is_deleted = 0, updated_at = ?, last_opened_at = ?
+        WHERE id = ?`).run(sectionId, title, position ?? null, now(), now(), existing.id);
+      return this.getPage(existing.id);
+    }
+    const id = randomUUID(); const timestamp = now();
+    const position = (this.db.prepare('SELECT COALESCE(MAX(position), -1) + 1 AS p FROM pages WHERE section_id = ?').get(sectionId) as { p: number }).p;
+    this.db.prepare(`INSERT INTO pages(
+      id, section_id, title, content_html, content_markdown, position, is_favorite, is_deleted,
+      created_at, updated_at, last_opened_at, sidebar_visible, parent_page_id, external_path
+    ) VALUES (?, ?, ?, '<p></p>', '', ?, 0, 0, ?, ?, ?, 1, NULL, ?)`)
+      .run(id, sectionId, title, position, timestamp, timestamp, timestamp, externalPath);
     return this.getPage(id);
   }
   getPage(id: string): Page {

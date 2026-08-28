@@ -2,6 +2,13 @@
 
 All notable changes to Noteleaf are documented here.
 
+## Unreleased
+
+- Adds linked Markdown shortcuts to notebook sections, preserving the source file and its relative links instead of copying rendered content into an internal page.
+- Adds **Add to notebook** to open Markdown documents and **Add Markdown file…** to section menus.
+- Uses one tab-free notebook workspace for sidebar pages, reserves tabs for external Markdown files, moves sidebar collapse beside the notebook `+`, and adds an always-available Home button.
+- Keeps external Markdown actions visible beside a compact, ellipsized file path; the full source path remains available on hover.
+
 ## 1.0.1 — 2026-08-28
 
 - Reworks the Noteleaf icon with a deep emerald tile, warm off-white page, and saturated green leaf for strong contrast in the Windows taskbar and macOS Dock.

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { ChevronDown, ChevronRight, FileText, Folder, GripVertical, MoreHorizontal, Plus, Search, Star, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronsLeft, FileSymlink, FileText, Folder, GripVertical, MoreHorizontal, Plus, Search, Star, Trash2 } from 'lucide-react';
 import type { NavigationData, NotebookTree, PageSummary, SectionTree } from '../../shared/types';
 import { BrandLogo } from '../components/BrandLogo';
 import { shortcut } from '../platform';
@@ -11,6 +11,7 @@ interface SidebarProps {
   activePageId?: string;
   onOpen: (page: PageSummary) => void;
   onNewNotebook: () => void;
+  onCollapse: () => void;
   onNewSection: (notebookId: string) => void;
   onNewPage: (sectionId: string) => void;
   onNotebookMenu: (notebook: NotebookTree, x: number, y: number) => void;
@@ -42,8 +43,8 @@ function insertionPosition(ids: string[], sourceId: string, targetIndex: number,
 
 function PageRow({ page, active, onOpen, onMenu, siblings, index, drop, onDropChange, onMove }: { page: PageSummary; active: boolean; onOpen: () => void; onMenu: (x: number, y: number) => void; siblings?: PageSummary[]; index?: number; drop?: DropIndicator; onDropChange?: (drop?: DropIndicator) => void; onMove?: (pageId: string, sectionId: string, position: number) => void }) {
   const edge = drop?.kind === 'page' && drop.id === page.id ? drop.edge : undefined;
-  return <button className={`page-row ${active ? 'active' : ''} ${edge ? `drop-${edge}` : ''}`} onClick={onOpen} onContextMenu={(e) => { e.preventDefault(); onMenu(e.clientX, e.clientY); }} onDragOver={(event) => { if (!siblings || !event.dataTransfer.types.includes('text/notes-page')) return; event.preventDefault(); event.stopPropagation(); onDropChange?.({ kind: 'page', id: page.id, edge: edgeFor(event) }); }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) onDropChange?.(); }} onDrop={(event) => { const pageId = event.dataTransfer.getData('text/notes-page'); if (!pageId || !siblings || index === undefined) return; event.preventDefault(); event.stopPropagation(); const targetEdge = edgeFor(event); onDropChange?.(); onMove?.(pageId, page.sectionId, insertionPosition(siblings.map((item) => item.id), pageId, index, targetEdge)); }}>
-    <span className="drag-handle" draggable title="Drag to reorder" onClick={(event) => event.stopPropagation()} onDragStart={(event) => { event.stopPropagation(); event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/notes-page', page.id); }} onDragEnd={() => onDropChange?.()}><GripVertical size={12} /></span><FileText size={14} /><span>{page.title}</span>{page.isFavorite && <Star size={12} fill="currentColor" />}
+  return <button data-nav-id={page.id} className={`page-row ${active ? 'active' : ''} ${edge ? `drop-${edge}` : ''}`} onClick={onOpen} onContextMenu={(e) => { e.preventDefault(); onMenu(e.clientX, e.clientY); }} onDragOver={(event) => { if (!siblings || !event.dataTransfer.types.includes('text/notes-page')) return; event.preventDefault(); event.stopPropagation(); onDropChange?.({ kind: 'page', id: page.id, edge: edgeFor(event) }); }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) onDropChange?.(); }} onDrop={(event) => { const pageId = event.dataTransfer.getData('text/notes-page'); if (!pageId || !siblings || index === undefined) return; event.preventDefault(); event.stopPropagation(); const targetEdge = edgeFor(event); onDropChange?.(); onMove?.(pageId, page.sectionId, insertionPosition(siblings.map((item) => item.id), pageId, index, targetEdge)); }}>
+    <span className="drag-handle" draggable title="Drag to reorder" onClick={(event) => event.stopPropagation()} onDragStart={(event) => { event.stopPropagation(); event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/notes-page', page.id); }} onDragEnd={() => onDropChange?.()}><GripVertical size={12} /></span>{page.externalPath ? <FileSymlink size={14} aria-label="Linked Markdown file" /> : <FileText size={14} />}<span title={page.externalPath || undefined}>{page.title}</span>{page.isFavorite && <Star size={12} fill="currentColor" />}
   </button>;
 }
 
@@ -56,16 +57,15 @@ export function Sidebar(props: SidebarProps) {
   const expand = (id: string) => setCollapsed((before) => { const next = new Set(before); next.delete(id); return next; });
   useEffect(() => {
     if (!props.activePageId) return;
-    const frame = requestAnimationFrame(() => {
-      document.querySelector<HTMLElement>('.sidebar-scroll .page-row.active')?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'nearest'
-      });
-    });
+    const location = props.data.notebooks.flatMap((notebook) => notebook.sections.map((section) => ({ notebook, section }))).find(({ section }) => section.pages.some((page) => page.id === props.activePageId));
+    if (location) setCollapsed((before) => { const next = new Set(before); next.delete(location.notebook.id); next.delete(location.section.id); return next; });
+    const frame = requestAnimationFrame(() => requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>(`[data-nav-id="${props.activePageId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }));
     return () => cancelAnimationFrame(frame);
-  }, [props.activePageId]);
+  }, [props.activePageId, props.data.notebooks]);
   return <aside className="sidebar" style={{ width: props.width, minWidth: props.width }}>
-    <div className="brand"><BrandLogo className="brand-mark" /><strong>Noteleaf</strong><button title="New notebook" onClick={props.onNewNotebook}><Plus size={16} /></button></div>
+    <div className="brand"><BrandLogo className="brand-mark" /><strong>Noteleaf</strong><button className="sidebar-collapse" title="Collapse sidebar" aria-label="Collapse sidebar" onClick={props.onCollapse}><ChevronsLeft size={16} /></button><button title="New notebook" onClick={props.onNewNotebook}><Plus size={16} /></button></div>
     <button className="search-button" onClick={props.onSearch}><Search size={15} /><span>Search notes…</span><kbd>{shortcut('F')}</kbd></button>
     <div className="sidebar-scroll">
       {props.data.favorites.length > 0 && <nav className="sidebar-group"><div className="group-label"><Star size={12} /> Favorites</div>{props.data.favorites.map((page) => <PageRow key={`fav-${page.id}`} page={page} active={props.activePageId === page.id} onOpen={() => props.onOpen(page)} onMenu={(x, y) => props.onPageMenu(page, x, y)} />)}</nav>}

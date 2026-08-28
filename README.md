@@ -15,6 +15,7 @@ See [CHANGELOG.md](CHANGELOG.md) for release notes.
 - Organize notes into draggable notebooks, sections, sidebar pages, and linked child pages.
 - Write rich notes with headings, lists, tables, links, code blocks, colored text, and edge-resizable images.
 - Open individual Markdown files or browse a complete folder tree from a collapsible explorer.
+- Pin an external Markdown file into any notebook section without copying it; the sidebar shortcut keeps relative links connected to neighboring files.
 - Follow safe relative links between Markdown documents directly inside Noteleaf.
 - Navigate page history and open tabs with working Back and Forward controls.
 - Plan daily work in a dedicated Tasks workspace with To do, In progress, and Done states.
@@ -32,6 +33,36 @@ See [CHANGELOG.md](CHANGELOG.md) for release notes.
 | Toggle focus mode | `Ctrl+Shift+F` | `Command+Shift+F` |
 | Open Settings | `Ctrl+,` | `Command+,` |
 | Save external Markdown | `Ctrl+S` | `Command+S` |
+
+## Install Noteleaf
+
+When prebuilt installers are available, download them from the [GitHub Releases page](https://github.com/bharathgedela/notes_app/releases). To build and install directly from source, install [Git](https://git-scm.com/) and Node.js 22 with npm 10 or newer, then use the command for your computer.
+
+### Windows x64 — one command
+
+Run in PowerShell. It clones the repository, builds the installer, and opens it:
+
+```powershell
+git clone https://github.com/bharathgedela/notes_app.git; Set-Location notes_app; npm ci; npm run dist:win; $setup = Get-ChildItem ".\release\Noteleaf-*-Setup.exe" | Select-Object -First 1; Start-Process $setup.FullName
+```
+
+Complete the displayed Noteleaf setup wizard.
+
+### macOS Apple Silicon — one command
+
+Run in Terminal on an M-series Mac. It builds and opens the DMG:
+
+```sh
+git clone https://github.com/bharathgedela/notes_app.git && cd notes_app && npm ci && npm run dist:mac && open "$(find release -maxdepth 1 -name 'Noteleaf-*-arm64.dmg' -print -quit)"
+```
+
+### macOS Intel — one command
+
+```sh
+git clone https://github.com/bharathgedela/notes_app.git && cd notes_app && npm ci && npm run dist:mac:x64 && open "$(find release -maxdepth 1 -name 'Noteleaf-*-x64.dmg' -print -quit)"
+```
+
+After the DMG opens, drag Noteleaf into **Applications**. Public macOS downloads should be Developer ID signed and notarized; unsigned local builds may require using **Open** from Finder's context menu on their build Mac.
 
 ## Development
 

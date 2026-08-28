@@ -43,6 +43,7 @@ const api: NotesApi = {
     persistDraft: (path, content) => invoke('files:draft', path, content),
     clearDraft: (path) => invoke('files:clear-draft', path),
     importMarkdown: (sectionId) => invoke('files:import', sectionId),
+    linkMarkdown: (sectionId, path) => invoke('files:link', sectionId, path),
     exportPage: (pageId) => invoke('files:export', pageId), recent: () => invoke('files:recent'),
     saveAttachment: (pageId, dataUrl) => invoke('files:attachment', pageId, dataUrl),
   },

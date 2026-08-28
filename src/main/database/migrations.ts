@@ -131,6 +131,13 @@ const migrations: Migration[] = [
       CREATE INDEX tasks_updated ON tasks(updated_at DESC);
     `,
   },
+  {
+    version: 5,
+    sql: `
+      ALTER TABLE pages ADD COLUMN external_path TEXT;
+      CREATE INDEX pages_external_path ON pages(external_path);
+    `,
+  },
 ];
 
 export function runMigrations(db: Database.Database): void {

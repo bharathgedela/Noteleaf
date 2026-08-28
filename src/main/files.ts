@@ -104,6 +104,13 @@ export class FileService {
     return this.repository.savePage(created.id, { title, contentHtml, contentMarkdown: external.content });
   }
 
+  async linkMarkdown(sectionId: string, path?: string): Promise<Page | null> {
+    const external = await this.openMarkdown(path);
+    if (!external) return null;
+    const title = basename(external.filename, extname(external.filename));
+    return this.repository.linkExternalPage(sectionId, title, external.path);
+  }
+
   async exportPage(page: Page): Promise<string | null> {
     const result = await dialog.showSaveDialog({
       title: 'Export Note as Markdown', defaultPath: `${page.title.replace(/[<>:"/\\|?*]/g, '-') || 'Untitled'}.md`,

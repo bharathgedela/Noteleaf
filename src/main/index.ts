@@ -49,7 +49,7 @@ function createMenu(): void {
     { label: 'New Note', accelerator: 'CmdOrCtrl+N', click: () => sendCommand('new-note') },
     { label: 'Open Markdown File…', accelerator: 'CmdOrCtrl+O', click: () => sendCommand('open-markdown') },
     { label: 'Open Markdown Folder…', click: () => sendCommand('open-markdown-folder') },
-    { label: 'Import Markdown as Note…', click: () => sendCommand('import-markdown') },
+    { label: 'Import Markdown Copy as Note…', click: () => sendCommand('import-markdown') },
     { type: 'separator' },
     { label: 'Save', accelerator: 'CmdOrCtrl+S', click: () => sendCommand('save') },
     { label: 'Save As…', accelerator: 'CmdOrCtrl+Shift+S', click: () => sendCommand('save-as') },

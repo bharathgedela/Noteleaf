@@ -26,7 +26,7 @@ describe('NotesRepository', () => {
     expect(navigation.notebooks[0]?.sections[0]?.pages[0]?.title).toBe('Welcome to Noteleaf');
     expect(repository!.getPage(navigation.notebooks[0].sections[0].pages[0].id).contentMarkdown).toContain('Essential shortcuts');
     const migration = repository!.db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get() as { version: number };
-    expect(migration.version).toBe(4);
+    expect(migration.version).toBe(5);
   });
 
   it('supports notebook, section, and page CRUD with autosave content', () => {
@@ -119,6 +119,22 @@ describe('NotesRepository', () => {
     expect(repository!.navigation().notebooks[0].sections[0].pages.some((item) => item.id === child.id)).toBe(false);
     expect(repository!.navigation().recent.some((item) => item.id === child.id)).toBe(false);
     expect(repository!.getPage(child.id).title).toBe('Inline child');
+  });
+
+  it('stores external Markdown files as movable sidebar shortcuts without copying content', () => {
+    const firstSection = repository!.navigation().notebooks[0].sections[0];
+    const notebook = repository!.createNotebook('Project docs');
+    const secondSection = repository!.createSection(notebook.id, 'Architecture');
+    const path = 'C:\\project\\docs\\overview.md';
+    const linked = repository!.linkExternalPage(firstSection.id, 'Overview', path);
+
+    expect(linked).toMatchObject({ title: 'Overview', externalPath: path, contentMarkdown: '', contentHtml: '<p></p>' });
+    expect(repository!.navigation().notebooks[0].sections[0].pages).toEqual(expect.arrayContaining([expect.objectContaining({ id: linked.id, externalPath: path })]));
+
+    const moved = repository!.linkExternalPage(secondSection.id, 'Project overview', path.toLowerCase());
+    expect(moved.id).toBe(linked.id);
+    expect(moved).toMatchObject({ sectionId: secondSection.id, title: 'Project overview', externalPath: path });
+    expect(repository!.navigation().notebooks.find((item) => item.id === notebook.id)?.sections[0].pages).toEqual([expect.objectContaining({ id: linked.id })]);
   });
 
   it('tracks daily tasks independently from notes', () => {
