@@ -1,8 +1,8 @@
 #!/bin/sh
 set -eu
 
-release_base="https://github.com/bharathgedela/notes_app/releases/latest/download"
-release_api="https://api.github.com/repos/bharathgedela/notes_app/releases/latest"
+release_base="https://github.com/bharathgedela/Noteleaf/releases/latest/download"
+release_api="https://api.github.com/repos/bharathgedela/Noteleaf/releases/latest"
 case "$(uname -m)" in
   arm64) asset_name="Noteleaf-arm64.dmg" ;;
   x86_64) asset_name="Noteleaf-x64.dmg" ;;
@@ -85,14 +85,14 @@ download_with_percentage() {
 
 echo "Downloading the latest Noteleaf release ($asset_name)..."
 if ! download_with_percentage "$release_base/$asset_name" "$dmg_path"; then
-  echo "A published Noteleaf macOS release could not be downloaded. Check https://github.com/bharathgedela/notes_app/releases and try again." >&2
+  echo "A published Noteleaf macOS release could not be downloaded. Check https://github.com/bharathgedela/Noteleaf/releases and try again." >&2
   exit 1
 fi
 
 echo "Downloading and verifying the release checksum..."
 if ! curl --proto '=https' --tlsv1.2 --fail --silent --show-error --location \
   "$release_base/SHA256SUMS.txt" --output "$checksums_path"; then
-  echo "The Noteleaf release checksum could not be downloaded. Check https://github.com/bharathgedela/notes_app/releases and try again." >&2
+  echo "The Noteleaf release checksum could not be downloaded. Check https://github.com/bharathgedela/Noteleaf/releases and try again." >&2
   exit 1
 fi
 

@@ -6,7 +6,7 @@
 
 Noteleaf is a polished, local-first notebook, daily task tracker, and Markdown workspace for Windows and macOS. Notes stay on your computer, save automatically, and can be protected with portable backups in a local, OneDrive, or Google Drive-synced folder.
 
-Current release: **1.0.2**
+Current release: **1.0.5**
 
 See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
@@ -36,14 +36,14 @@ See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
 ## Install Noteleaf
 
-These commands download the correct asset from the latest [GitHub release](https://github.com/bharathgedela/notes_app/releases), verify its SHA-256 checksum, and start Noteleaf. No Git, Node.js, or npm installation is required.
+These commands download the correct asset from the latest [GitHub release](https://github.com/bharathgedela/Noteleaf/releases), verify its SHA-256 checksum, and start Noteleaf. No Git, Node.js, or npm installation is required.
 
 ### Windows x64 — one command
 
 Run in PowerShell:
 
 ```powershell
-irm "https://raw.githubusercontent.com/bharathgedela/notes_app/main/scripts/install.ps1?$(New-Guid)" | iex
+irm "https://raw.githubusercontent.com/bharathgedela/Noteleaf/main/scripts/install.ps1?$(New-Guid)" | iex
 ```
 
 Complete the displayed Noteleaf setup wizard.
@@ -53,7 +53,7 @@ Complete the displayed Noteleaf setup wizard.
 Run in Terminal. The script automatically selects Apple Silicon or Intel and installs Noteleaf in `~/Applications`:
 
 ```sh
-curl -fsSL "https://raw.githubusercontent.com/bharathgedela/notes_app/main/scripts/install.sh?$(date +%s)" | sh
+curl -fsSL "https://raw.githubusercontent.com/bharathgedela/Noteleaf/main/scripts/install.sh?$(date +%s)" | sh
 ```
 
 The bootstrap scripts are readable in [`scripts/install.ps1`](scripts/install.ps1) and [`scripts/install.sh`](scripts/install.sh) before running them. Until public builds are Developer ID signed and notarized, macOS may require choosing **Open** from Finder's context menu on first launch; unsigned Windows builds may similarly display SmartScreen.

@@ -5,13 +5,13 @@
   "author": "Bharath Kumar Gedela",
   "license": "Apache-2.0",
   "description": "A polished, local-first notebook, task tracker, and Markdown workspace for macOS and Windows.",
-  "homepage": "https://github.com/bharathgedela/notes_app#readme",
+  "homepage": "https://github.com/bharathgedela/Noteleaf#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bharathgedela/notes_app.git"
+    "url": "git+https://github.com/bharathgedela/Noteleaf.git"
   },
   "bugs": {
-    "url": "https://github.com/bharathgedela/notes_app/issues"
+    "url": "https://github.com/bharathgedela/Noteleaf/issues"
   },
   "keywords": ["noteleaf", "notes", "markdown", "electron", "local-first"],
   "type": "module",
