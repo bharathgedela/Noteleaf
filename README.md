@@ -48,6 +48,8 @@ irm "https://raw.githubusercontent.com/bharathgedela/Noteleaf/main/scripts/insta
 
 Complete the displayed Noteleaf setup wizard.
 
+If a corporate network or virtual machine blocks GitHub's release-asset host, the script automatically downloads the same checksum-verified installer in smaller parts from GitHub's raw-content host.
+
 ### macOS — one command
 
 Run in Terminal. The script automatically selects Apple Silicon or Intel and installs Noteleaf in `~/Applications`:

@@ -41,6 +41,10 @@ jobs:
           & curl.exe --fail --location --ipv4 --tlsv1.2 --retry 3 --connect-timeout 30 --head --output NUL `
             'https://github.com/bharathgedela/Noteleaf/releases/latest/download/Noteleaf-Setup.exe'
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+          & curl.exe --fail --location --ipv4 --tlsv1.2 --retry 3 --connect-timeout 30 --head --output NUL `
+            'https://raw.githubusercontent.com/bharathgedela/Noteleaf/installer-fallback/Noteleaf-Setup.parts.txt'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
