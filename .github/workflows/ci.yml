@@ -22,6 +22,25 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - name: Verify Windows installer bootstrap
+        if: runner.os == 'Windows'
+        shell: powershell
+        run: |
+          $tokens = $null
+          $parseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile(
+            (Resolve-Path 'scripts/install.ps1'),
+            [ref]$tokens,
+            [ref]$parseErrors
+          ) | Out-Null
+          if ($parseErrors.Count -gt 0) {
+            $parseErrors | ForEach-Object { Write-Error $_.Message }
+            exit 1
+          }
+
+          & curl.exe --fail --location --ipv4 --tlsv1.2 --retry 3 --connect-timeout 30 --head --output NUL `
+            'https://github.com/bharathgedela/Noteleaf/releases/latest/download/Noteleaf-Setup.exe'
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint

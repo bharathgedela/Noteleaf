@@ -11,15 +11,59 @@ function Invoke-NoteleafDownload {
     [Parameter(Mandatory = $true)][string]$OutFile
   )
 
-  # Windows PowerShell 5.1 can otherwise negotiate an older TLS version.
-  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+  $downloadErrors = New-Object System.Collections.Generic.List[string]
+  $curl = Get-Command curl.exe -ErrorAction SilentlyContinue
 
-  Invoke-WebRequest `
-    -Uri $Uri `
-    -OutFile $OutFile `
-    -UseBasicParsing `
-    -MaximumRedirection 10 `
-    -Headers @{ 'User-Agent' = 'Noteleaf-Installer' }
+  if ($null -ne $curl) {
+    Remove-Item -LiteralPath $OutFile -Force -ErrorAction SilentlyContinue
+    & $curl.Source `
+      --fail `
+      --location `
+      --ipv4 `
+      --tlsv1.2 `
+      --retry 3 `
+      --retry-delay 2 `
+      --connect-timeout 30 `
+      --user-agent 'Noteleaf-Installer' `
+      --progress-bar `
+      --output $OutFile `
+      $Uri
+
+    if ($LASTEXITCODE -eq 0 -and (Test-Path -LiteralPath $OutFile) -and (Get-Item -LiteralPath $OutFile).Length -gt 0) {
+      return
+    }
+
+    $downloadErrors.Add("curl.exe exited with code $LASTEXITCODE")
+    Remove-Item -LiteralPath $OutFile -Force -ErrorAction SilentlyContinue
+  }
+
+  try {
+    # Windows PowerShell 5.1 can otherwise negotiate an older TLS version.
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+    Invoke-WebRequest `
+      -Uri $Uri `
+      -OutFile $OutFile `
+      -UseBasicParsing `
+      -MaximumRedirection 10 `
+      -Headers @{ 'User-Agent' = 'Noteleaf-Installer' }
+
+    if (-not (Test-Path -LiteralPath $OutFile) -or (Get-Item -LiteralPath $OutFile).Length -eq 0) {
+      throw 'PowerShell created an empty download.'
+    }
+    return
+  } catch {
+    $exceptionMessages = New-Object System.Collections.Generic.List[string]
+    $exception = $_.Exception
+    while ($null -ne $exception) {
+      if ($exception.Message) { $exceptionMessages.Add($exception.Message) }
+      $exception = $exception.InnerException
+    }
+    $downloadErrors.Add("PowerShell: $($exceptionMessages -join ' -> ')")
+    Remove-Item -LiteralPath $OutFile -Force -ErrorAction SilentlyContinue
+  }
+
+  throw ($downloadErrors -join '; ')
 }
 
 Write-Host 'Downloading the latest Noteleaf installer...'
