@@ -5,7 +5,6 @@ All notable changes to Noteleaf are documented here.
 ## 1.0.5 — 2026-08-28
 
 - Prevents notebook color collisions so the first eight visible notebooks always receive distinct colors on both macOS and Windows.
-- Adds a checksum-verified raw-content fallback for Windows networks and virtual machines that cannot reach GitHub's release-asset host.
 
 ## 1.0.4 — 2026-08-28
 

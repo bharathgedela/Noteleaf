@@ -88,25 +88,3 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.ref_name }}
         run: gh release create "$RELEASE_TAG" release-assets/* --verify-tag --generate-notes --title "Noteleaf $RELEASE_TAG"
-      - name: Publish raw-host Windows fallback
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: |
-          mkdir installer-fallback-files
-          split -b 25m -d -a 3 --additional-suffix=.bin \
-            release-assets/Noteleaf-Setup.exe \
-            installer-fallback-files/Noteleaf-Setup.exe.part
-          find installer-fallback-files -maxdepth 1 -type f -name '*.bin' -printf '%f\n' \
-            | sort > installer-fallback-files/Noteleaf-Setup.parts.txt
-          cp release-assets/SHA256SUMS.txt installer-fallback-files/SHA256SUMS.txt
-          printf 'Fallback download parts for Noteleaf %s. Use the supported installer script on the main branch.\n' \
-            "$RELEASE_TAG" > installer-fallback-files/README.md
-
-          git config user.name github-actions[bot]
-          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git checkout --orphan installer-fallback-next
-          git rm -rf .
-          mv installer-fallback-files/* .
-          git add README.md SHA256SUMS.txt Noteleaf-Setup.parts.txt Noteleaf-Setup.exe.part*.bin
-          git commit -m "Publish Windows installer fallback for $RELEASE_TAG"
-          git push --force origin HEAD:installer-fallback
