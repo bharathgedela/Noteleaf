@@ -1,6 +1,7 @@
 import { markdownToEditorHtml } from '../markdown.js';
 import type { NotesRepository } from '../database/repository.js';
 import type { MarkdownViewMode, TaskStatus } from '../../shared/types.js';
+import { mcpContentView } from './protected-content.js';
 
 const MAX_CONTENT_LENGTH = 5 * 1024 * 1024;
 
@@ -21,6 +22,20 @@ function cleanText(value: string, label: string, max: number): string {
 function cleanMarkdown(value: string): string {
   if (value.length > MAX_CONTENT_LENGTH) throw new Error('Page content is too large');
   return value.replace(/\r\n/g, '\n');
+}
+
+function searchTokens(query: string): string[] {
+  return query.toLocaleLowerCase().split(/\s+/).map((token) => token.replaceAll('"', '')).filter(Boolean);
+}
+
+function safeExcerpt(markdown: string, query: string): string {
+  const compact = markdown.replace(/\s+/g, ' ').trim();
+  if (!compact) return '[Protected content omitted]';
+  const lower = compact.toLocaleLowerCase();
+  const firstMatch = searchTokens(query).map((token) => lower.indexOf(token)).find((index) => index >= 0) ?? -1;
+  const start = Math.max(0, firstMatch < 0 ? 0 : firstMatch - 55);
+  const excerpt = compact.slice(start, start + 180);
+  return `${start > 0 ? '… ' : ''}${excerpt}${start + excerpt.length < compact.length ? ' …' : ''}`;
 }
 
 export class NoteleafMcpData {
@@ -61,7 +76,22 @@ export class NoteleafMcpData {
 
   search(query: string, limit = 20) {
     const cleaned = cleanText(query, 'Search query', 300);
-    return { query: cleaned, results: this.repository.fullSearch(cleaned).slice(0, Math.min(Math.max(limit, 1), 50)) };
+    const tokens = searchTokens(cleaned);
+    const cappedLimit = Math.min(Math.max(limit, 1), 50);
+    const results = this.repository.fullSearch(cleaned).flatMap((result) => {
+      const page = this.repository.readPage(result.id);
+      const view = mcpContentView(page.contentHtml, page.contentMarkdown);
+      if (!view.protectedTextRedacted) return [result];
+
+      const safeHaystack = `${result.title}\n${view.searchableMarkdown}`.toLocaleLowerCase();
+      if (!tokens.every((token) => safeHaystack.includes(token))) return [];
+      return [{
+        ...result,
+        excerpt: safeExcerpt(view.searchableMarkdown, cleaned),
+        protectedTextRedacted: true,
+      }];
+    }).slice(0, cappedLimit);
+    return { query: cleaned, results };
   }
 
   async getPage(pageId: string) {
@@ -70,11 +100,16 @@ export class NoteleafMcpData {
     const page = this.repository.readPage(pageId);
     let contentMarkdown = page.contentMarkdown;
     let updatedAt = page.updatedAt;
+    let protectedTextRedacted = false;
     if (page.externalPath) {
       const document = await this.files.openMarkdown(page.externalPath);
       if (!document) throw new Error('Linked Markdown file could not be opened');
       contentMarkdown = document.content;
       updatedAt = document.modifiedAt ?? updatedAt;
+    } else {
+      const view = mcpContentView(page.contentHtml, page.contentMarkdown);
+      contentMarkdown = view.contentMarkdown;
+      protectedTextRedacted = view.protectedTextRedacted;
     }
     return {
       id: page.id,
@@ -87,6 +122,7 @@ export class NoteleafMcpData {
       isChildPage: !page.isSidebarVisible,
       parentPageId: page.parentPageId,
       linkedFilePath: page.externalPath,
+      protectedTextRedacted,
     };
   }
 
@@ -111,7 +147,12 @@ export class NoteleafMcpData {
     const title = input.title === undefined ? existing.title : cleanText(input.title, 'Title', 500);
     const mode = input.mode ?? 'replace';
     const supplied = input.contentMarkdown === undefined ? undefined : cleanMarkdown(input.contentMarkdown);
-    let markdown = existing.contentMarkdown;
+    const storedPage = this.repository.readPage(existing.id);
+    const protectedView = mcpContentView(storedPage.contentHtml, storedPage.contentMarkdown);
+    if (!existing.linkedFilePath && protectedView.protectedTextRedacted && supplied !== undefined) {
+      throw new Error('This page contains protected text. Unprotect it in Noteleaf before allowing AI content updates.');
+    }
+    let markdown = existing.linkedFilePath ? existing.contentMarkdown : storedPage.contentMarkdown;
     if (supplied !== undefined) {
       if (mode === 'append') markdown = [markdown.trimEnd(), supplied.trimStart()].filter(Boolean).join('\n\n');
       else if (mode === 'prepend') markdown = [supplied.trimEnd(), markdown.trimStart()].filter(Boolean).join('\n\n');
@@ -125,9 +166,11 @@ export class NoteleafMcpData {
         await this.files.saveMarkdown(existing.linkedFilePath, markdown, document.viewMode);
       }
       this.repository.renamePage(existing.id, title);
-    } else {
+    } else if (supplied !== undefined) {
       const html = await markdownToEditorHtml(markdown);
       this.repository.savePage(existing.id, { title, contentHtml: html, contentMarkdown: markdown });
+    } else {
+      this.repository.renamePage(existing.id, title);
     }
     this.onMutation(existing.id);
     return this.getPage(existing.id);

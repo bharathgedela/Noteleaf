@@ -2,6 +2,11 @@
 
 All notable changes to Noteleaf are documented here.
 
+## 1.2.0 — 2026-09-03
+
+- Adds copyable protected text in the rich editor. Selected text can be locked with the shield button to prevent accidental typing, deletion, cutting, pasting, or formatting until it is explicitly unprotected.
+- Automatically redacts protected text from MCP page reads and search results, and rejects AI content updates that could overwrite a page containing hidden protected content.
+
 ## 1.1.1 — 2026-08-28
 
 - Replaces manual MCP configuration copying with one **Enable AI access** switch.

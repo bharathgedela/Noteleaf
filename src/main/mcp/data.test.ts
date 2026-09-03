@@ -71,6 +71,33 @@ describe('NoteleafMcpData', () => {
     })).rejects.toThrow('Page changed after it was read');
   });
 
+  it('hides protected text from reads and search without allowing AI to overwrite it', async () => {
+    const page = repository.navigation().notebooks[0].sections[0].pages[0];
+    repository.savePage(page.id, {
+      title: 'ClickUp access',
+      contentHtml: '<p>Public ClickUp instructions.</p><p>Token: <span data-protected-text="true"><code>vault-secret-123</code></span></p>',
+      contentMarkdown: 'Public ClickUp instructions.\n\nToken: `vault-secret-123`',
+    });
+
+    const read = await data.getPage(page.id);
+    expect(read.protectedTextRedacted).toBe(true);
+    expect(read.contentMarkdown).toContain('Public ClickUp instructions');
+    expect(read.contentMarkdown).not.toContain('vault-secret-123');
+    expect(data.search('vault-secret-123').results).toEqual([]);
+    expect(data.search('ClickUp').results[0]).toMatchObject({ id: page.id, protectedTextRedacted: true });
+    expect(data.search('ClickUp').results[0].excerpt).not.toContain('vault-secret-123');
+
+    await expect(data.updatePage({
+      pageId: page.id,
+      expectedUpdatedAt: read.updatedAt,
+      contentMarkdown: 'Replace everything.',
+    })).rejects.toThrow('contains protected text');
+
+    const renamed = await data.updatePage({ pageId: page.id, expectedUpdatedAt: read.updatedAt, title: 'Renamed access page' });
+    expect(renamed.title).toBe('Renamed access page');
+    expect(repository.readPage(page.id).contentHtml).toContain('data-protected-text="true"');
+  });
+
   it('reads and changes daily tasks', () => {
     const task = data.createTask('Publish MCP build', '2026-08-28');
     expect(data.listTasks('2026-08-28').tasks).toEqual([expect.objectContaining({ id: task.id, status: 'todo' })]);

@@ -1,6 +1,6 @@
 # Third-party notices
 
-Noteleaf 1.1.1 includes open-source software from the projects listed below. This inventory is generated from the production dependency graph in `package-lock.json`.
+Noteleaf 1.2.0 includes open-source software from the projects listed below. This inventory is generated from the production dependency graph in `package-lock.json`.
 
 Where a package offers multiple licenses, Noteleaf elects the Apache-2.0-compatible option: Apache-2.0 for `rc` and MIT for `expand-template`. Copyright and license files supplied by these packages remain in their source packages. The Electron application bundle also includes Electron's `LICENSE` and Chromium's `LICENSES.chromium.html` notices.
 

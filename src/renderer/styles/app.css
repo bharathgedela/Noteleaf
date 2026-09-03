@@ -275,6 +275,9 @@ kbd { padding: 2px 5px; border: 1px solid var(--border-strong); border-radius: 4
 .format-bar > span { width: 1px; height: 17px; margin: 0 2px; background: var(--border); }
 .format-bar button { width: 27px; height: 27px; display: grid; place-items: center; border-radius: 4px; color: var(--muted); }
 .format-bar button:hover, .format-bar button.active { background: var(--surface-hover); color: var(--text); }
+.format-bar button:disabled { cursor: default; opacity: .34; }
+.format-bar button:disabled:hover { background: transparent; color: var(--muted); }
+.format-bar .protect-text-button.active { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); }
 .format-bar .font-size-value { width: 24px; color: var(--faint); font: 600 10px/1 var(--mono-font); }
 .format-bar .font-size-value:hover { color: var(--accent); }
 .color-control { position: relative; }
@@ -289,6 +292,9 @@ kbd { padding: 2px 5px; border: 1px solid var(--border-strong); border-radius: 4
 .color-palette button i { width: 15px; height: 15px; border-radius: 50%; box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .08); }
 .color-palette button i.default-color { display: grid; place-items: center; border-radius: 4px; background: var(--surface-soft); color: var(--text); font: 700 12px/1.1 system-ui, sans-serif; }
 .prose-editor { min-height: 420px; outline: 0; color: var(--text); font-size: var(--editor-size); line-height: 1.72; }
+.prose-editor [data-protected-text="true"] { padding: .06em .18em; border-radius: 3px; background: color-mix(in srgb, var(--accent) 11%, transparent); box-shadow: inset 0 -1px color-mix(in srgb, var(--accent) 52%, transparent); cursor: text; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.prose-editor [data-protected-text="true"]::selection { background: color-mix(in srgb, var(--accent) 36%, Highlight); }
+.protected-edit-notice { width: max-content; max-width: 100%; display: flex; align-items: center; gap: 7px; margin: -8px 0 14px auto; border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--border)); border-radius: 6px; padding: 6px 9px; background: color-mix(in srgb, var(--accent-soft) 55%, var(--surface)); color: var(--accent); font-size: 10px; font-weight: 600; }
 .prose-editor p { margin: .75em 0; }
 .prose-editor > p:first-child { margin-top: 0; }
 .prose-editor h1, .prose-editor h2, .prose-editor h3 { letter-spacing: -.025em; line-height: 1.28; }

@@ -32,7 +32,7 @@ export function createNoteleafMcpServer(options: {
   onMutation?: (pageId?: string) => void;
 }): McpServer {
   const data = new NoteleafMcpData(options.repository, options.files, options.onMutation);
-  const server = new McpServer({ name: 'noteleaf', title: 'Noteleaf', version: '1.1.0' });
+  const server = new McpServer({ name: 'noteleaf', title: 'Noteleaf', version: '1.2.0' });
 
   server.registerTool('get_workspace_overview', {
     title: 'Get Noteleaf workspace overview',
@@ -62,7 +62,7 @@ export function createNoteleafMcpServer(options: {
 
   server.registerTool('search_notes', {
     title: 'Search Noteleaf',
-    description: 'Full-text searches titles and Markdown content across all active Noteleaf pages. Returns page IDs, locations, and short matching excerpts.',
+    description: 'Full-text searches titles and AI-visible Markdown across all active Noteleaf pages. Protected text is never returned or matched.',
     inputSchema: {
       query: z.string().min(1).max(300),
       limit: z.number().int().min(1).max(50).optional().default(20),
@@ -72,7 +72,7 @@ export function createNoteleafMcpServer(options: {
 
   server.registerTool('get_page', {
     title: 'Read a Noteleaf page',
-    description: 'Reads the complete Markdown content and location of one page. For safe updates, retain the exact updatedAt value.',
+    description: 'Reads AI-visible Markdown and the location of one page. Protected text is replaced by a redaction notice. For safe updates, retain the exact updatedAt value.',
     inputSchema: { page_id: z.string().min(1).describe('Stable Noteleaf page ID') },
     annotations: readAnnotations,
   }, async ({ page_id }) => runTool(() => data.getPage(page_id)));
@@ -102,7 +102,7 @@ export function createNoteleafMcpServer(options: {
 
     server.registerTool('update_page', {
       title: 'Update a Noteleaf page',
-      description: 'Renames or changes a page. Always call get_page immediately first and pass its exact updatedAt value to prevent overwriting newer edits. Append mode is best for adding a new status update.',
+      description: 'Renames or changes a page. Always call get_page immediately first and pass its exact updatedAt value to prevent overwriting newer edits. Content updates are rejected while the page contains protected text.',
       inputSchema: {
         page_id: z.string().min(1),
         expected_updated_at: z.string().min(1).describe('Exact updatedAt returned by the latest get_page call'),

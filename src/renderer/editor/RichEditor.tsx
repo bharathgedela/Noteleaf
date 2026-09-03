@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EditorContent, NodeViewWrapper, ReactNodeViewRenderer, useEditor, type NodeViewProps } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
@@ -15,7 +15,8 @@ import TableCell from '@tiptap/extension-table-cell';
 import TurndownService from 'turndown';
 import { gfm } from 'turndown-plugin-gfm';
 import { common, createLowlight } from 'lowlight';
-import { AArrowDown, AArrowUp, Bold, CheckSquare, Code, FilePlus2, Heading1, Heading2, Heading3, ImagePlus, Italic, Link2, List, ListOrdered, Minus, Palette, Quote, Table2, Type } from 'lucide-react';
+import { AArrowDown, AArrowUp, Bold, CheckSquare, Code, FilePlus2, Heading1, Heading2, Heading3, ImagePlus, Italic, Link2, List, ListOrdered, Minus, Palette, Quote, ShieldCheck, Table2, Type } from 'lucide-react';
+import { ProtectedText } from './ProtectedText';
 
 const lowlight = createLowlight(common);
 const fontSizes = [12, 14, 16, 18, 20, 24, 28, 32];
@@ -129,7 +130,7 @@ const ResizableImage = Image.extend({
 });
 
 const StyledCodeBlock = CodeBlockLowlight.extend({
-  marks: 'link textStyle',
+  marks: 'link textStyle protectedText',
 }).configure({ lowlight, enableTabIndentation: true, tabSize: 2 });
 
 interface RichEditorProps {
@@ -151,6 +152,7 @@ export function RichEditor({ pageId, initialHtml, spellcheck, onChange, onCreate
   const [selectionActive, setSelectionActive] = useState(false);
   const [toolbarRevision, setToolbarRevision] = useState(0);
   const [colorOpen, setColorOpen] = useState(false);
+  const [protectedNotice, setProtectedNotice] = useState(false);
   const slashOpenRef = useRef(false);
   const slashQueryRef = useRef('');
   const slashSelectedRef = useRef(0);
@@ -159,14 +161,21 @@ export function RichEditor({ pageId, initialHtml, spellcheck, onChange, onCreate
   const imageInput = useRef<HTMLInputElement>(null);
   const pageTitleInput = useRef<HTMLInputElement>(null);
   const colorControl = useRef<HTMLDivElement>(null);
+  const protectedNoticeTimer = useRef<number | null>(null);
+  const showProtectedNotice = useCallback(() => {
+    setProtectedNotice(true);
+    if (protectedNoticeTimer.current !== null) window.clearTimeout(protectedNoticeTimer.current);
+    protectedNoticeTimer.current = window.setTimeout(() => setProtectedNotice(false), 2600);
+  }, []);
   const extensions = useMemo(() => [
     StarterKit.configure({ link: false, codeBlock: false }),
     StyledCodeBlock,
     Link.configure({ openOnClick: false, autolink: true, defaultProtocol: 'https', protocols: ['http', 'https', 'notes'] }),
     TextStyleKit.configure({ backgroundColor: false, fontFamily: false, lineHeight: false }),
+    ProtectedText.configure({ onBlocked: showProtectedNotice }),
     ResizableImage.configure({ inline: false, allowBase64: false }), Placeholder.configure({ placeholder: "Write something, or type '/' for commands…" }),
     TaskList, TaskItem.configure({ nested: true }), Table.configure({ resizable: true }), TableRow, TableHeader, TableCell,
-  ], []);
+  ], [showProtectedNotice]);
   const editor = useEditor({
     extensions, content: initialHtml || '<p></p>',
     editorProps: {
@@ -235,6 +244,9 @@ export function RichEditor({ pageId, initialHtml, spellcheck, onChange, onCreate
     },
   }, [pageId]);
   useEffect(() => { editor?.setOptions({ editorProps: { attributes: { class: 'prose-editor', spellcheck: String(spellcheck) } } }); }, [editor, spellcheck]);
+  useEffect(() => () => {
+    if (protectedNoticeTimer.current !== null) window.clearTimeout(protectedNoticeTimer.current);
+  }, []);
   useEffect(() => {
     if (!editor) return;
     const updateToolbar = () => {
@@ -358,6 +370,7 @@ export function RichEditor({ pageId, initialHtml, spellcheck, onChange, onCreate
   const textStyle = editor.getAttributes('textStyle') as { color?: string; fontSize?: string };
   const parsedFontSize = Number.parseInt(textStyle.fontSize || '', 10);
   const currentFontSize = Number.isFinite(parsedFontSize) ? parsedFontSize : 16;
+  const protectedActive = editor.isActive('protectedText');
   const changeFontSize = (direction: -1 | 1) => {
     const currentIndex = fontSizes.reduce((closest, size, index) => Math.abs(size - currentFontSize) < Math.abs(fontSizes[closest] - currentFontSize) ? index : closest, 0);
     const nextIndex = Math.max(0, Math.min(fontSizes.length - 1, currentIndex + direction));
@@ -376,6 +389,19 @@ export function RichEditor({ pageId, initialHtml, spellcheck, onChange, onCreate
       {action('Italic', editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), <Italic size={15} />)}
       {action('Inline code', editor.isActive('code'), () => editor.chain().focus().toggleCode().run(), <Code size={15} />)}
       {action('Link', editor.isActive('link'), setLink, <Link2 size={15} />)}
+      <button
+        type="button"
+        title={selectionActive ? (protectedActive ? 'Unprotect selected text' : 'Protect selected text') : 'Select text to protect it'}
+        aria-label={protectedActive ? 'Unprotect selected text' : 'Protect selected text'}
+        className={protectedActive ? 'active protect-text-button' : 'protect-text-button'}
+        disabled={!selectionActive}
+        onMouseDown={(event) => {
+          event.preventDefault();
+          if (!selectionActive) return;
+          if (protectedActive) editor.chain().focus().unprotectText().run();
+          else editor.chain().focus().protectText().run();
+        }}
+      ><ShieldCheck size={15} /></button>
       <span />
       {action(`Decrease font size (currently ${currentFontSize}px)`, false, () => changeFontSize(-1), <AArrowDown size={15} />)}
       <button type="button" className="font-size-value" title="Reset font size" aria-label={`Reset font size, currently ${currentFontSize} pixels`} onMouseDown={(event) => { event.preventDefault(); editor.chain().focus().unsetFontSize().run(); }}>{currentFontSize}</button>
@@ -398,6 +424,7 @@ export function RichEditor({ pageId, initialHtml, spellcheck, onChange, onCreate
       {action('Numbered list', editor.isActive('orderedList'), () => editor.chain().focus().toggleOrderedList().run(), <ListOrdered size={15} />)}
       {action('Quote', editor.isActive('blockquote'), () => editor.chain().focus().toggleBlockquote().run(), <Quote size={15} />)}
     </div>
+    {protectedNotice && <div className="protected-edit-notice" role="status" aria-live="polite"><ShieldCheck size={14} />Protected text cannot be changed. Select it and click the shield to unprotect it.</div>}
     {slashPosition && <div className="slash-menu" role="menu" aria-label="Insert block" style={slashPosition}>
       <div className="slash-title">{slashQuery ? `Commands matching /${slashQuery}` : 'Add a block or page'}<small>↑↓ navigate · Enter select</small></div>
       {filteredSlashCommands.map((command, index) => <button
