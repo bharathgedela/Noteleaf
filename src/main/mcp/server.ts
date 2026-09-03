@@ -32,7 +32,7 @@ export function createNoteleafMcpServer(options: {
   onMutation?: (pageId?: string) => void;
 }): McpServer {
   const data = new NoteleafMcpData(options.repository, options.files, options.onMutation);
-  const server = new McpServer({ name: 'noteleaf', title: 'Noteleaf', version: '1.2.0' });
+  const server = new McpServer({ name: 'noteleaf', title: 'Noteleaf', version: '1.2.1' });
 
   server.registerTool('get_workspace_overview', {
     title: 'Get Noteleaf workspace overview',

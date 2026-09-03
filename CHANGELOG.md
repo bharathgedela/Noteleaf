@@ -2,6 +2,10 @@
 
 All notable changes to Noteleaf are documented here.
 
+## 1.2.1 — 2026-09-03
+
+- Updates TipTap and its ProseMirror dependencies to patched releases so the production dependency audit passes with zero known vulnerabilities.
+
 ## 1.2.0 — 2026-09-03
 
 - Adds copyable protected text in the rich editor. Selected text can be locked with the shield button to prevent accidental typing, deletion, cutting, pasting, or formatting until it is explicitly unprotected.

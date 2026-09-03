@@ -1,6 +1,6 @@
 # Third-party notices
 
-Noteleaf 1.2.0 includes open-source software from the projects listed below. This inventory is generated from the production dependency graph in `package-lock.json`.
+Noteleaf 1.2.1 includes open-source software from the projects listed below. This inventory is generated from the production dependency graph in `package-lock.json`.
 
 Where a package offers multiple licenses, Noteleaf elects the Apache-2.0-compatible option: Apache-2.0 for `rc` and MIT for `expand-template`. Copyright and license files supplied by these packages remain in their source packages. The Electron application bundle also includes Electron's `LICENSE` and Chromium's `LICENSES.chromium.html` notices.
 
@@ -19,44 +19,44 @@ Where a package offers multiple licenses, Noteleaf elects the Apache-2.0-compati
 | @shikijs/themes | 3.23.0 | MIT |
 | @shikijs/types | 3.23.0 | MIT |
 | @shikijs/vscode-textmate | 10.0.2 | MIT |
-| @tiptap/core | 3.30.3 | MIT |
-| @tiptap/extension-blockquote | 3.30.3 | MIT |
-| @tiptap/extension-bold | 3.30.3 | MIT |
-| @tiptap/extension-bubble-menu | 3.30.3 | MIT |
-| @tiptap/extension-bullet-list | 3.30.3 | MIT |
-| @tiptap/extension-code | 3.30.3 | MIT |
-| @tiptap/extension-code-block | 3.30.3 | MIT |
-| @tiptap/extension-code-block-lowlight | 3.30.3 | MIT |
-| @tiptap/extension-document | 3.30.3 | MIT |
-| @tiptap/extension-dropcursor | 3.30.3 | MIT |
-| @tiptap/extension-floating-menu | 3.30.3 | MIT |
-| @tiptap/extension-gapcursor | 3.30.3 | MIT |
-| @tiptap/extension-hard-break | 3.30.3 | MIT |
-| @tiptap/extension-heading | 3.30.3 | MIT |
-| @tiptap/extension-horizontal-rule | 3.30.3 | MIT |
-| @tiptap/extension-image | 3.30.3 | MIT |
-| @tiptap/extension-italic | 3.30.3 | MIT |
-| @tiptap/extension-link | 3.30.3 | MIT |
-| @tiptap/extension-list | 3.30.3 | MIT |
-| @tiptap/extension-list-item | 3.30.3 | MIT |
-| @tiptap/extension-list-keymap | 3.30.3 | MIT |
-| @tiptap/extension-ordered-list | 3.30.3 | MIT |
-| @tiptap/extension-paragraph | 3.30.3 | MIT |
-| @tiptap/extension-placeholder | 3.30.3 | MIT |
-| @tiptap/extension-strike | 3.30.3 | MIT |
-| @tiptap/extension-table | 3.30.3 | MIT |
-| @tiptap/extension-table-cell | 3.30.3 | MIT |
-| @tiptap/extension-table-header | 3.30.3 | MIT |
-| @tiptap/extension-table-row | 3.30.3 | MIT |
-| @tiptap/extension-task-item | 3.30.3 | MIT |
-| @tiptap/extension-task-list | 3.30.3 | MIT |
-| @tiptap/extension-text | 3.30.3 | MIT |
-| @tiptap/extension-text-style | 3.30.3 | MIT |
-| @tiptap/extension-underline | 3.30.3 | MIT |
-| @tiptap/extensions | 3.30.3 | MIT |
-| @tiptap/pm | 3.30.3 | MIT |
-| @tiptap/react | 3.30.3 | MIT |
-| @tiptap/starter-kit | 3.30.3 | MIT |
+| @tiptap/core | 3.31.2 | MIT |
+| @tiptap/extension-bubble-menu | 3.31.2 | MIT |
+| @tiptap/extension-code-block | 3.31.2 | MIT |
+| @tiptap/extension-code-block-lowlight | 3.31.2 | MIT |
+| @tiptap/extension-floating-menu | 3.31.2 | MIT |
+| @tiptap/extension-image | 3.31.2 | MIT |
+| @tiptap/extension-link | 3.31.2 | MIT |
+| @tiptap/extension-list | 3.31.2 | MIT |
+| @tiptap/extension-placeholder | 3.31.2 | MIT |
+| @tiptap/extension-table | 3.31.2 | MIT |
+| @tiptap/extension-table-cell | 3.31.2 | MIT |
+| @tiptap/extension-table-header | 3.31.2 | MIT |
+| @tiptap/extension-table-row | 3.31.2 | MIT |
+| @tiptap/extension-task-item | 3.31.2 | MIT |
+| @tiptap/extension-task-list | 3.31.2 | MIT |
+| @tiptap/extension-text-style | 3.31.2 | MIT |
+| @tiptap/extensions | 3.31.2 | MIT |
+| @tiptap/pm | 3.31.2 | MIT |
+| @tiptap/react | 3.31.2 | MIT |
+| @tiptap/starter-kit | 3.31.2 | MIT |
+| @tiptap/starter-kit/node_modules/@tiptap/extension-blockquote | 3.31.2 | MIT |
+| @tiptap/starter-kit/node_modules/@tiptap/extension-bold | 3.31.2 | MIT |
+| @tiptap/starter-kit/node_modules/@tiptap/extension-bullet-list | 3.31.2 | MIT |
+| @tiptap/starter-kit/node_modules/@tiptap/extension-code | 3.31.2 | MIT |
+| @tiptap/starter-kit/node_modules/@tiptap/extension-document | 3.31.2 | MIT |
+| @tiptap/starter-kit/node_modules/@tiptap/extension-dropcursor | 3.31.2 | MIT |
+| @tiptap/starter-kit/node_modules/@tiptap/extension-gapcursor | 3.31.2 | MIT |
+| @tiptap/starter-kit/node_modules/@tiptap/extension-hard-break | 3.31.2 | MIT |
+| @tiptap/starter-kit/node_modules/@tiptap/extension-heading | 3.31.2 | MIT |
+| @tiptap/starter-kit/node_modules/@tiptap/extension-horizontal-rule | 3.31.2 | MIT |
+| @tiptap/starter-kit/node_modules/@tiptap/extension-italic | 3.31.2 | MIT |
+| @tiptap/starter-kit/node_modules/@tiptap/extension-list-item | 3.31.2 | MIT |
+| @tiptap/starter-kit/node_modules/@tiptap/extension-list-keymap | 3.31.2 | MIT |
+| @tiptap/starter-kit/node_modules/@tiptap/extension-ordered-list | 3.31.2 | MIT |
+| @tiptap/starter-kit/node_modules/@tiptap/extension-paragraph | 3.31.2 | MIT |
+| @tiptap/starter-kit/node_modules/@tiptap/extension-strike | 3.31.2 | MIT |
+| @tiptap/starter-kit/node_modules/@tiptap/extension-text | 3.31.2 | MIT |
+| @tiptap/starter-kit/node_modules/@tiptap/extension-underline | 3.31.2 | MIT |
 | @types/debug | 4.1.13 | MIT |
 | @types/estree | 1.0.9 | MIT |
 | @types/estree-jsx | 1.0.5 | MIT |
@@ -275,7 +275,7 @@ Where a package offers multiple licenses, Noteleaf elects the Apache-2.0-compati
 | prosemirror-view | 1.42.3 | MIT |
 | proxy-addr | 2.0.7 | MIT |
 | pump | 3.0.4 | MIT |
-| qs | 6.15.3 | BSD-3-Clause |
+| qs | 6.16.0 | BSD-3-Clause |
 | range-parser | 1.3.0 | MIT |
 | raw-body | 3.0.2 | MIT |
 | raw-body/node_modules/iconv-lite | 0.7.3 | MIT |

@@ -1,6 +1,6 @@
 Noteleaf third-party license texts
 
-Generated from the installed production dependency graph for Noteleaf 1.2.0.
+Generated from the installed production dependency graph for Noteleaf 1.2.1.
 The Electron runtime also distributes LICENSE and LICENSES.chromium.html in its application bundle.
 
 ================================================================================
@@ -349,7 +349,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/core@3.30.3 — LICENSE.md
+@tiptap/core@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -375,7 +375,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-blockquote@3.30.3 — LICENSE.md
+@tiptap/extension-bubble-menu@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -401,7 +401,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-bold@3.30.3 — LICENSE.md
+@tiptap/extension-code-block@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -427,7 +427,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-bubble-menu@3.30.3 — LICENSE.md
+@tiptap/extension-code-block-lowlight@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -453,7 +453,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-bullet-list@3.30.3 — LICENSE.md
+@tiptap/extension-floating-menu@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -479,7 +479,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-code@3.30.3 — LICENSE.md
+@tiptap/extension-image@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -505,7 +505,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-code-block@3.30.3 — LICENSE.md
+@tiptap/extension-link@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -531,7 +531,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-code-block-lowlight@3.30.3 — LICENSE.md
+@tiptap/extension-list@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -557,7 +557,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-document@3.30.3 — LICENSE.md
+@tiptap/extension-placeholder@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -583,7 +583,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-dropcursor@3.30.3 — LICENSE.md
+@tiptap/extension-table@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -609,7 +609,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-floating-menu@3.30.3 — LICENSE.md
+@tiptap/extension-table-cell@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -635,7 +635,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-gapcursor@3.30.3 — LICENSE.md
+@tiptap/extension-table-header@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -661,7 +661,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-hard-break@3.30.3 — LICENSE.md
+@tiptap/extension-table-row@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -687,7 +687,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-heading@3.30.3 — LICENSE.md
+@tiptap/extension-task-item@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -713,7 +713,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-horizontal-rule@3.30.3 — LICENSE.md
+@tiptap/extension-task-list@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -739,7 +739,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-image@3.30.3 — LICENSE.md
+@tiptap/extension-text-style@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -765,7 +765,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-italic@3.30.3 — LICENSE.md
+@tiptap/extensions@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -791,7 +791,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-link@3.30.3 — LICENSE.md
+@tiptap/pm@3.31.2 — LICENSE
 ================================================================================
 
 MIT License
@@ -817,7 +817,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-list@3.30.3 — LICENSE.md
+@tiptap/react@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -843,7 +843,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-list-item@3.30.3 — LICENSE.md
+@tiptap/starter-kit@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -869,7 +869,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-list-keymap@3.30.3 — LICENSE.md
+@tiptap/starter-kit/node_modules/@tiptap/extension-blockquote@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -895,7 +895,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-ordered-list@3.30.3 — LICENSE.md
+@tiptap/starter-kit/node_modules/@tiptap/extension-bold@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -921,7 +921,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-paragraph@3.30.3 — LICENSE.md
+@tiptap/starter-kit/node_modules/@tiptap/extension-bullet-list@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -947,7 +947,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-placeholder@3.30.3 — LICENSE.md
+@tiptap/starter-kit/node_modules/@tiptap/extension-code@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -973,7 +973,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-strike@3.30.3 — LICENSE.md
+@tiptap/starter-kit/node_modules/@tiptap/extension-document@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -999,7 +999,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-table@3.30.3 — LICENSE.md
+@tiptap/starter-kit/node_modules/@tiptap/extension-dropcursor@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -1025,7 +1025,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-table-cell@3.30.3 — LICENSE.md
+@tiptap/starter-kit/node_modules/@tiptap/extension-gapcursor@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -1051,7 +1051,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-table-header@3.30.3 — LICENSE.md
+@tiptap/starter-kit/node_modules/@tiptap/extension-hard-break@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -1077,7 +1077,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-table-row@3.30.3 — LICENSE.md
+@tiptap/starter-kit/node_modules/@tiptap/extension-heading@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -1103,7 +1103,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-task-item@3.30.3 — LICENSE.md
+@tiptap/starter-kit/node_modules/@tiptap/extension-horizontal-rule@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -1129,7 +1129,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-task-list@3.30.3 — LICENSE.md
+@tiptap/starter-kit/node_modules/@tiptap/extension-italic@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -1155,7 +1155,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-text@3.30.3 — LICENSE.md
+@tiptap/starter-kit/node_modules/@tiptap/extension-list-item@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -1181,7 +1181,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-text-style@3.30.3 — LICENSE.md
+@tiptap/starter-kit/node_modules/@tiptap/extension-list-keymap@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -1207,7 +1207,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extension-underline@3.30.3 — LICENSE.md
+@tiptap/starter-kit/node_modules/@tiptap/extension-ordered-list@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -1233,7 +1233,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/extensions@3.30.3 — LICENSE.md
+@tiptap/starter-kit/node_modules/@tiptap/extension-paragraph@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -1259,7 +1259,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/pm@3.30.3 — LICENSE
+@tiptap/starter-kit/node_modules/@tiptap/extension-strike@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -1285,7 +1285,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/react@3.30.3 — LICENSE.md
+@tiptap/starter-kit/node_modules/@tiptap/extension-text@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -1311,7 +1311,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ================================================================================
-@tiptap/starter-kit@3.30.3 — LICENSE.md
+@tiptap/starter-kit/node_modules/@tiptap/extension-underline@3.31.2 — LICENSE.md
 ================================================================================
 
 MIT License
@@ -7136,7 +7136,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.
 
 ================================================================================
-qs@6.15.3 — LICENSE.md
+qs@6.16.0 — LICENSE.md
 ================================================================================
 
 BSD 3-Clause License
