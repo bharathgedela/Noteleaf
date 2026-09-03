@@ -1,6 +1,6 @@
 Noteleaf third-party license texts
 
-Generated from the installed production dependency graph for Noteleaf 1.1.0.
+Generated from the installed production dependency graph for Noteleaf 1.1.1.
 The Electron runtime also distributes LICENSE and LICENSES.chromium.html in its application bundle.
 
 ================================================================================

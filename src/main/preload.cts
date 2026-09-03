@@ -60,6 +60,12 @@ const api: NotesApi = {
     status: () => invoke('mcp:status'),
     regenerateAccessLink: () => invoke('mcp:regenerate-access-link'),
   },
+  aiAccess: {
+    status: () => invoke('ai-access:status'),
+    enable: () => invoke('ai-access:enable'),
+    disable: () => invoke('ai-access:disable'),
+    openChatGptSetup: () => invoke('ai-access:open-chatgpt-setup'),
+  },
   system: { openExternal: (url) => invoke('system:open-external', url), platform: () => process.platform },
   events: {
     onOpenExternal: (callback) => {

@@ -19,41 +19,40 @@ Noteleaf includes a local Model Context Protocol (MCP) server. Compatible AI cli
 
 Write tools are not advertised until **Allow AI changes** is enabled. Noteleaf deliberately exposes no delete tools in this first version.
 
-## Configure access in Noteleaf
+## Enable AI access
 
-1. Open **Settings → AI & MCP**.
-2. Leave **Allow AI changes** off while testing read access.
-3. Use one of the connection methods below.
-4. Enable changes only when you want the connected client to create or update Noteleaf data.
+1. Open **Settings → AI access**.
+2. Turn on **Enable AI access**.
+3. Leave **Allow AI to make changes** off while testing read access.
 
-The local HTTP service is disabled by default and binds only to `127.0.0.1`. Its private endpoint contains a random 192-bit token. Treat the complete URL as a password and use **New private link** if it is ever exposed.
+That single switch starts Noteleaf's private local MCP service and automatically configures supported local clients. The connection stays available while Noteleaf is running, so an AI client reads the library directly through MCP—there is no per-question export or reader script.
+
+The HTTP service binds only to `127.0.0.1`. Its endpoint contains a random 192-bit token and is shown only inside the collapsed **Technical details** section. Treat the complete URL as a password.
 
 ## Claude Desktop: private local connection
 
-Noteleaf can run as a standard stdio MCP server without opening a network port.
+Noteleaf configures Claude Desktop automatically on Windows and macOS—there is no JSON to copy.
 
-1. In **Settings → AI & MCP**, select **Copy configuration**.
-2. Open Claude Desktop's local MCP developer configuration.
-3. Merge the copied `noteleaf` entry into the existing `mcpServers` object.
-4. Completely restart Claude Desktop.
-5. Ask: “Use Noteleaf to list my notebooks.”
+1. Turn on **Enable AI access**.
+2. If Noteleaf shows **Restart required**, completely quit and reopen Claude Desktop once.
+3. Ask: “Use Noteleaf to list my notebooks.”
 
-The generated configuration points at the installed Noteleaf executable, runs its bundled MCP entry script in Electron's Node mode, and passes the exact Noteleaf data directory. No separate Node.js installation is required. Noteleaf may remain open; SQLite WAL mode and a busy timeout allow the UI and MCP process to share the local library safely.
+Noteleaf atomically merges only `mcpServers.noteleaf` into Claude Desktop's existing configuration and preserves every unrelated setting and MCP server. Turning AI access off removes only that Noteleaf entry. If Claude's configuration contains invalid JSON, Noteleaf leaves the file unchanged and shows the problem in Settings.
+
+The generated connection points at the installed Noteleaf executable and exact Noteleaf data directory. No separate Node.js installation is required. Noteleaf may remain open; SQLite WAL mode and a busy timeout allow the UI and MCP process to share the local library safely.
 
 Anthropic now also supports local desktop extensions and remote Streamable HTTP connectors. See its [local MCP guidance](https://support.anthropic.com/en/articles/10949351-getting-started-with-local-mcp-servers-on-claude-desktop) and [remote MCP guidance](https://support.anthropic.com/en/articles/11503834-building-custom-integrations-via-remote-mcp-servers).
 
-## ChatGPT: temporary HTTPS connection
+## ChatGPT: one-time account connection
 
-ChatGPT needs a publicly reachable HTTPS MCP endpoint; it cannot call a loopback address on your computer directly. The official [OpenAI MCP server quickstart](https://developers.openai.com/plugins/build/app-quickstart) describes the Streamable HTTP `/mcp` transport and using an HTTPS tunnel during development.
+ChatGPT runs in the cloud and cannot directly call a loopback address on your computer. OpenAI therefore requires a one-time authenticated [Secure MCP Tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels) connection for a private local server.
 
-1. Turn on **Local HTTP endpoint** in Noteleaf.
-2. Copy the private endpoint. It resembles `http://127.0.0.1:37931/mcp/<private-token>`.
-3. Start a trusted temporary tunnel to port `37931`, for example `ngrok http 37931`.
-4. Replace `http://127.0.0.1:37931` in the copied endpoint with the tunnel's HTTPS origin. Preserve `/mcp/<private-token>` exactly.
-5. In ChatGPT's plugin/custom-connector developer settings, add that complete HTTPS endpoint and test the connection.
-6. Stop the tunnel when finished.
+1. Turn on **Enable AI access** in Noteleaf.
+2. Select **Connect ChatGPT**. Noteleaf opens OpenAI's guided Secure MCP Tunnel setup.
+3. Complete the one-time tunnel and ChatGPT connector authorization in the intended workspace.
+4. Keep Noteleaf open when you want ChatGPT to access the library.
 
-For a permanent public connector, use a hosted service with OAuth instead of a long-lived tunnel to a personal computer. The bundled endpoint is designed for personal and development use.
+This account authorization cannot be silently performed by a desktop application: it is deliberately protected by OpenAI workspace permissions. After it is completed, ChatGPT invokes Noteleaf's MCP tools directly; you do not copy note content or run a reader script for each question.
 
 ## Safe update behavior
 

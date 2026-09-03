@@ -4,6 +4,7 @@ import type { NotesRepository } from './database/repository.js';
 import type { FileService } from './files.js';
 import type { BackupService } from './backup/service.js';
 import type { McpHttpService } from './mcp/service.js';
+import type { AiAccessService } from './ai-access/service.js';
 
 const CHANNELS = [
   'navigation:list', 'notebooks:create', 'notebooks:rename', 'notebooks:remove', 'notebooks:move',
@@ -15,6 +16,7 @@ const CHANNELS = [
   'files:attachment', 'settings:get', 'settings:update', 'settings:open-data', 'system:open-external',
   'backup:status', 'backup:choose-folder', 'backup:create', 'backup:set-schedule', 'backup:restore', 'backup:open-folder',
   'mcp:status', 'mcp:regenerate-access-link',
+  'ai-access:status', 'ai-access:enable', 'ai-access:disable', 'ai-access:open-chatgpt-setup',
 ] as const;
 
 function text(value: unknown, label: string, max = 500): string {
@@ -42,7 +44,13 @@ function taskStatus(value: unknown): TaskStatus {
   return value;
 }
 
-export function registerIpc(repository: NotesRepository, files: FileService, backups: BackupService, mcp: McpHttpService): () => void {
+export function registerIpc(
+  repository: NotesRepository,
+  files: FileService,
+  backups: BackupService,
+  mcp: McpHttpService,
+  aiAccess: AiAccessService,
+): () => void {
   ipcMain.handle('navigation:list', () => repository.navigation());
   ipcMain.handle('notebooks:create', (_event, name?: string) => repository.createNotebook(name ? text(name, 'Name') : undefined));
   ipcMain.handle('notebooks:rename', (_event, rawId, name) => repository.renameNotebook(id(rawId), text(name, 'Name')));
@@ -92,7 +100,8 @@ export function registerIpc(repository: NotesRepository, files: FileService, bac
   ipcMain.handle('settings:get', () => repository.getSettings());
   ipcMain.handle('settings:update', async (_event, patch: Partial<AppSettings>) => {
     const updated = repository.updateSettings(patch);
-    await mcp.configure(updated);
+    if (Object.hasOwn(patch, 'mcpEnabled')) await aiAccess.syncAtStartup();
+    else if (Object.keys(patch).some((key) => key.startsWith('mcp'))) await mcp.configure(updated);
     return repository.getSettings();
   });
   ipcMain.handle('settings:open-data', () => files.openDataFolder());
@@ -104,6 +113,10 @@ export function registerIpc(repository: NotesRepository, files: FileService, bac
   ipcMain.handle('backup:open-folder', () => backups.openFolder());
   ipcMain.handle('mcp:status', () => mcp.status());
   ipcMain.handle('mcp:regenerate-access-link', () => mcp.regenerateAccessLink());
+  ipcMain.handle('ai-access:status', () => aiAccess.status());
+  ipcMain.handle('ai-access:enable', () => aiAccess.enable());
+  ipcMain.handle('ai-access:disable', () => aiAccess.disable());
+  ipcMain.handle('ai-access:open-chatgpt-setup', () => aiAccess.openChatGptSetup());
   ipcMain.handle('system:open-external', async (_event, url) => {
     const target = new URL(text(url, 'URL', 4096));
     if (target.protocol !== 'http:' && target.protocol !== 'https:') throw new Error('Unsupported URL');

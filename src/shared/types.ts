@@ -46,6 +46,24 @@ export interface McpStatus {
   lastError: string | null;
 }
 
+export type AiProviderState = 'connected' | 'restart-required' | 'not-installed' | 'setup-required' | 'error' | 'disabled';
+
+export interface AiProviderStatus {
+  state: AiProviderState;
+  detail: string | null;
+}
+
+export interface AiAccessStatus {
+  enabled: boolean;
+  running: boolean;
+  allowWrites: boolean;
+  port: number;
+  endpoint: string;
+  lastError: string | null;
+  claude: AiProviderStatus;
+  chatgpt: AiProviderStatus;
+}
+
 export interface PageSummary {
   id: Id;
   sectionId: Id;
@@ -205,6 +223,12 @@ export interface NotesApi {
   mcp: {
     status(): Promise<McpStatus>;
     regenerateAccessLink(): Promise<McpStatus>;
+  };
+  aiAccess: {
+    status(): Promise<AiAccessStatus>;
+    enable(): Promise<AiAccessStatus>;
+    disable(): Promise<AiAccessStatus>;
+    openChatGptSetup(): Promise<AiAccessStatus>;
   };
   system: {
     openExternal(url: string): Promise<void>;

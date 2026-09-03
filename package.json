@@ -1,17 +1,17 @@
 {
   "name": "noteleaf-desktop",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "private": true,
   "author": "Bharath Kumar Gedela",
   "license": "Apache-2.0",
   "description": "A polished, local-first notebook, task tracker, and Markdown workspace for macOS and Windows.",
-  "homepage": "https://github.com/bharathgedela/Noteleaf#readme",
+  "homepage": "https://github.com/bharathgedela/notes_app#readme",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/bharathgedela/Noteleaf.git"
+    "url": "git+https://github.com/bharathgedela/notes_app.git"
   },
   "bugs": {
-    "url": "https://github.com/bharathgedela/Noteleaf/issues"
+    "url": "https://github.com/bharathgedela/notes_app/issues"
   },
   "keywords": [
     "noteleaf",

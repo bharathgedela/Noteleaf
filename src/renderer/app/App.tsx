@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, BookPlus, CheckCircle2, ChevronDown, ChevronRight, ChevronsRight, ClipboardList, Clock3, CloudUpload, FilePlus2, FileText, Folder, FolderOpen, FolderTree, Home, Keyboard, Lightbulb, List, LoaderCircle, Maximize2, Minimize2, Plus, RefreshCw, Rocket, Settings as SettingsIcon, X } from 'lucide-react';
-import type { AppSettings, BackupStatus, ExternalDocument, MarkdownFolderEntry, MarkdownFolderTree, McpStatus, NavigationData, NotebookTree, Page, PageSummary, SaveState, SearchResult, SectionTree } from '../../shared/types';
+import { ArrowLeft, ArrowRight, BookPlus, Bot, CheckCircle2, ChevronDown, ChevronRight, ChevronsRight, ClipboardList, Clock3, CloudUpload, FilePlus2, FileText, Folder, FolderOpen, FolderTree, Home, Keyboard, Lightbulb, List, LoaderCircle, Maximize2, MessageSquareText, Minimize2, Plus, RefreshCw, Rocket, Settings as SettingsIcon, ShieldCheck, Sparkles, X } from 'lucide-react';
+import type { AiAccessStatus, AiProviderState, AppSettings, BackupStatus, ExternalDocument, MarkdownFolderEntry, MarkdownFolderTree, NavigationData, NotebookTree, Page, PageSummary, SaveState, SearchResult, SectionTree } from '../../shared/types';
 import { Sidebar } from '../sidebar/Sidebar';
 import { RichEditor } from '../editor/RichEditor';
 import { MarkdownPreview } from '../markdown/MarkdownPreview';
@@ -27,7 +27,6 @@ function relativeTime(value: string): string {
   const hours = Math.floor(minutes / 60); if (hours < 24) return `${hours}h ago`;
   return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(value));
 }
-
 function useReliableAutofocus(ref: React.RefObject<HTMLInputElement | null>): void {
   useEffect(() => {
     const input = ref.current;
@@ -42,7 +41,19 @@ function useReliableAutofocus(ref: React.RefObject<HTMLInputElement | null>): vo
   }, [ref]);
 }
 
-function InternalDocument({ pageId, settings, libraryRevision, breadcrumb, onRevealBreadcrumb, onTitle, onSaved, onOpenPage, onStructureChange }: { pageId: string; settings: AppSettings; libraryRevision: number; breadcrumb?: { notebookId: string; notebook: string; sectionId: string; section: string }; onRevealBreadcrumb: (id: string) => void; onTitle: (title: string) => void; onSaved: () => void; onOpenPage: (pageId: string) => void; onStructureChange: () => void }) {
+function InternalDocument({
+  pageId,
+  settings,
+  libraryRevision,
+  breadcrumb,
+  onRevealBreadcrumb,
+  onTitle,
+  onSaved,
+  onOpenPage,
+  onStructureChange
+}: {
+  pageId: string; settings: AppSettings; libraryRevision: number; breadcrumb?: { notebookId: string; notebook: string; sectionId: string; section: string }; onRevealBreadcrumb: (id: string) => void; onTitle: (title: string) => void; onSaved: () => void; onOpenPage: (pageId: string) => void; onStructureChange: () => void
+}) {
   const [page, setPage] = useState<Page | null>(null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState({ html: '<p></p>', markdown: '' });
@@ -166,18 +177,37 @@ function SearchPalette({ onClose, onOpen }: { onClose: () => void; onOpen: (id: 
     <div className="search-results">{!query && <p className="palette-hint">Type a title or phrase from any note.</p>}{query && results.length === 0 && <p className="palette-hint">No matching notes</p>}{results.map((result, index) => <button key={result.id} className={selected === index ? 'selected' : ''} onMouseEnter={() => setSelected(index)} onClick={() => onOpen(result.id)}><strong>{result.title}</strong><small>{result.notebook} / {result.section}</small><span dangerouslySetInnerHTML={{ __html: result.excerpt }} /></button>)}</div>
   </section></div>;
 }
+function aiProviderLabel(state: AiProviderState, enabled: boolean): string {
+  if (!enabled || state === 'disabled') return 'Access off';
+  if (state === 'connected') return 'Connected';
+  if (state === 'restart-required') return 'Restart required';
+  if (state === 'not-installed') return 'Not installed';
+  if (state === 'error') return 'Needs attention';
+  return 'Setup required';
+}
+
+function aiProviderTone(state: AiProviderState, enabled: boolean): string {
+  if (!enabled || state === 'disabled') return 'off';
+  if (state === 'connected') return 'connected';
+  if (state === 'restart-required') return 'pending';
+  if (state === 'error') return 'error';
+  return 'neutral';
+}
 
 function SettingsDialog({ settings, onChange, onClose }: { settings: AppSettings; onChange: (settings: AppSettings) => void; onClose: () => void }) {
   const [backup, setBackup] = useState<BackupStatus>();
   const [backupBusy, setBackupBusy] = useState(false);
   const [backupMessage, setBackupMessage] = useState('');
-  const [mcp, setMcp] = useState<McpStatus>();
-  const [mcpMessage, setMcpMessage] = useState('');
+  const [aiAccess, setAiAccess] = useState<AiAccessStatus>();
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiMessage, setAiMessage] = useState('');
+  const [aiMessageIsError, setAiMessageIsError] = useState(false);
+  const aiApi = window.notes.aiAccess;
   const update = async (patch: Partial<AppSettings>) => {
     onChange(await window.notes.settings.update(patch));
-    if (Object.keys(patch).some((key) => key.startsWith('mcp'))) setMcp(await window.notes.mcp.status());
+    if (Object.keys(patch).some((key) => key.startsWith('mcp'))) setAiAccess(await aiApi.status());
   };
-  useEffect(() => { void Promise.all([window.notes.backup.status().then(setBackup), window.notes.mcp.status().then(setMcp)]); }, []);
+  useEffect(() => { void Promise.all([window.notes.backup.status().then(setBackup), aiApi.status().then(setAiAccess)]); }, [aiApi]);
   const runBackupAction = async (action: () => Promise<void>) => {
     if (backupBusy) return;
     setBackupBusy(true); setBackupMessage('');
@@ -185,13 +215,24 @@ function SettingsDialog({ settings, onChange, onClose }: { settings: AppSettings
     catch (error) { setBackupMessage(error instanceof Error ? error.message.replace(/^Error invoking remote method '[^']+': Error: /, '') : 'Backup operation failed.'); }
     finally { setBackupBusy(false); }
   };
-  const copyMcp = async (value: string, label: string) => {
-    try { await navigator.clipboard.writeText(value); setMcpMessage(`${label} copied.`); }
-    catch { setMcpMessage('Could not copy automatically. Select and copy the text manually.'); }
+  const runAiAction = async (action: () => Promise<AiAccessStatus>, message: string) => {
+    if (aiBusy) return;
+    setAiBusy(true); setAiMessage(''); setAiMessageIsError(false);
+    try {
+      const status = await action();
+      setAiAccess(status); setAiMessage(message);
+      onChange({ ...settings, mcpEnabled: status.enabled });
+    } catch (error) {
+      setAiMessageIsError(true);
+      setAiMessage(error instanceof Error ? error.message.replace(/^Error invoking remote method '[^']+': Error: /, '') : 'AI access could not be updated.');
+      setAiAccess(await aiApi.status().catch(() => aiAccess));
+    } finally { setAiBusy(false); }
   };
   const providerName = backup?.provider === 'onedrive' ? 'OneDrive synced folder' : backup?.provider === 'google-drive' ? 'Google Drive synced folder' : backup?.provider === 'local' ? 'Local folder' : 'Not configured';
-  const stdioConfig = mcp ? JSON.stringify({ mcpServers: { noteleaf: { command: mcp.executablePath, args: mcp.stdioArguments, env: mcp.stdioEnvironment } } }, null, 2) : '';
-  const mcpState = mcp?.lastError ? 'error' : mcp?.running ? 'running' : 'off';
+  const aiEnabled = aiAccess?.enabled ?? settings.mcpEnabled;
+  const claude: AiAccessStatus['claude'] = aiAccess?.claude || { state: aiEnabled ? 'not-installed' : 'disabled', detail: null };
+  const chatgpt: AiAccessStatus['chatgpt'] = aiAccess?.chatgpt || { state: aiEnabled ? 'setup-required' : 'disabled', detail: null };
+  const aiState = aiAccess?.lastError ? 'error' : aiAccess?.running ? 'running' : 'off';
   return <div className="modal-backdrop" onMouseDown={onClose}><section className="settings-dialog" role="dialog" aria-modal="true" onMouseDown={(e) => e.stopPropagation()}><header><div><h2>Settings</h2><p>Keep Noteleaf comfortable for the way you read and write.</p></div><button onClick={onClose}><X size={17} /></button></header>
     <div className="settings-scroll">
       <div className="setting-row"><label>Appearance<small>Choose how Noteleaf looks.</small></label><select value={settings.theme} onChange={(e) => void update({ theme: e.target.value as AppSettings['theme'] })}><option value="light">Light</option><option value="dark">Dark</option><option value="system">System</option></select></div>
@@ -199,23 +240,27 @@ function SettingsDialog({ settings, onChange, onClose }: { settings: AppSettings
       <div className="setting-row"><label>Reading width<small>{settings.lineWidth}px</small></label><input type="range" min="680" max="1100" step="20" value={settings.lineWidth} onChange={(e) => void update({ lineWidth: Number(e.target.value) })} /></div>
       <div className="setting-row"><label>Default Markdown mode</label><select value={settings.defaultMarkdownMode} onChange={(e) => void update({ defaultMarkdownMode: e.target.value as AppSettings['defaultMarkdownMode'] })}><option value="preview">Preview</option><option value="edit">Edit</option><option value="split">Split</option></select></div>
       <div className="setting-row"><label>Spell check</label><input type="checkbox" checked={settings.spellcheck} onChange={(e) => void update({ spellcheck: e.target.checked })} /></div>
-      <section className="mcp-settings">
-        <div className="settings-section-title"><div><h3>AI &amp; MCP</h3><p>Let Claude, ChatGPT, and other MCP clients find and work with your Noteleaf library.</p></div><span className={`mcp-badge ${mcpState}`}>{mcp?.lastError ? 'Error' : mcp?.running ? 'Connected' : 'Local'}</span></div>
-        <div className="setting-row"><label>Local HTTP endpoint<small>Enable this when connecting through an HTTPS tunnel for ChatGPT.</small></label><input type="checkbox" checked={settings.mcpEnabled} onChange={(event) => void update({ mcpEnabled: event.target.checked })} /></div>
-        <div className="setting-row"><label>Allow AI changes<small>Off means clients can search and read, but cannot create or update anything.</small></label><input type="checkbox" checked={settings.mcpAllowWrites} onChange={(event) => void update({ mcpAllowWrites: event.target.checked })} /></div>
-        {mcp?.lastError && <p className="mcp-error">Could not start MCP: {mcp.lastError}</p>}
-        {mcp && <div className="mcp-connect-card">
-          <div><strong>Private local endpoint</strong><small>Keep this secret link private. It grants access to your Noteleaf MCP tools.</small></div>
-          <code title={mcp.endpoint}>{mcp.endpoint}</code>
-          <div className="mcp-actions"><button disabled={!mcp.running} onClick={() => void copyMcp(mcp.endpoint, 'Endpoint')}>Copy endpoint</button><button onClick={() => void window.notes.mcp.regenerateAccessLink().then((status) => { setMcp(status); setMcpMessage('Created a new private access link.'); })}>New private link</button></div>
-        </div>}
-        {mcp && <div className="mcp-connect-card">
-          <div><strong>Claude Desktop / local MCP configuration</strong><small>This starts a private stdio connection and does not require the HTTP switch above.</small></div>
-          <pre>{stdioConfig}</pre>
-          <div className="mcp-actions"><button onClick={() => void copyMcp(stdioConfig, 'Claude configuration')}>Copy configuration</button></div>
-        </div>}
-        <p className="mcp-note">For ChatGPT, enable the endpoint, expose port <strong>{mcp?.port ?? settings.mcpPort}</strong> through a temporary HTTPS tunnel, and replace the local host in the private endpoint with the tunnel host. Write tools are announced separately so the AI host can request approval.</p>
-        {mcpMessage && <p className="mcp-message">{mcpMessage}</p>}
+      <section className="ai-access-settings">
+        <div className="settings-section-title"><div><h3>AI access</h3><p>Ask Claude or ChatGPT to find, summarize, and organize your Noteleaf library.</p></div><span className={`ai-access-badge ${aiState}`}>{aiAccess?.lastError ? 'Error' : aiAccess?.running ? 'Ready' : 'Off'}</span></div>
+        <div className={`ai-access-master${aiEnabled ? ' enabled' : ''}`}>
+          <span className="ai-access-master-icon" aria-hidden="true"><Sparkles size={20} /></span>
+          <div><strong>{aiEnabled ? 'AI access is enabled' : 'Enable AI access'}</strong><small>{aiEnabled ? 'Noteleaf is ready for the AI apps you connect.' : 'One switch securely prepares Noteleaf and configures supported apps.'}</small></div>
+          <button className="ai-access-switch" type="button" role="switch" aria-checked={aiEnabled} aria-label="Enable AI access" disabled={aiBusy} onClick={() => void runAiAction(aiEnabled ? aiApi.disable : aiApi.enable, aiEnabled ? 'AI access disabled.' : 'AI access enabled.')}><span /></button>
+        </div>
+        <div className="ai-provider-grid" aria-label="AI connections">
+          <article className={`ai-provider-card ${aiProviderTone(claude.state, aiEnabled)}`}>
+            <div className="ai-provider-icon claude" aria-hidden="true"><Bot size={18} /></div>
+            <div className="ai-provider-copy"><div><strong>Claude Desktop</strong><span className={`ai-provider-status ${aiProviderTone(claude.state, aiEnabled)}`}>{aiProviderLabel(claude.state, aiEnabled)}</span></div><p>{claude.detail || (claude.state === 'restart-required' ? 'Configuration is complete. Restart Claude Desktop once to finish connecting.' : claude.state === 'not-installed' ? 'Install Claude Desktop, then switch AI access on again.' : aiEnabled ? 'Noteleaf configures Claude automatically—no JSON to copy.' : 'Enable AI access to configure Claude automatically.')}</p></div>
+          </article>
+          <article className={`ai-provider-card ${aiProviderTone(chatgpt.state, aiEnabled)}`}>
+            <div className="ai-provider-icon chatgpt" aria-hidden="true"><MessageSquareText size={18} /></div>
+            <div className="ai-provider-copy"><div><strong>ChatGPT</strong><span className={`ai-provider-status ${aiProviderTone(chatgpt.state, aiEnabled)}`}>{aiProviderLabel(chatgpt.state, aiEnabled)}</span></div><p>{chatgpt.detail || (chatgpt.state === 'connected' ? 'ChatGPT can reach the local Noteleaf service.' : aiEnabled ? 'Complete a one-time connection in ChatGPT.' : 'Enable AI access before connecting ChatGPT.')}</p>{aiEnabled && <button className="ai-provider-action" disabled={aiBusy} onClick={() => void runAiAction(aiApi.openChatGptSetup, chatgpt.state === 'connected' ? 'Opened ChatGPT connection settings.' : 'Continue setup in the opened window.')}>{chatgpt.state === 'connected' ? 'Manage connection' : 'Connect ChatGPT'}</button>}</div>
+          </article>
+        </div>
+        <div className="ai-write-permission"><span aria-hidden="true"><ShieldCheck size={17} /></span><label htmlFor="ai-write-access"><strong>Allow AI to make changes</strong><small>Optional. When off, AI can search and read but cannot create or update content.</small></label><input id="ai-write-access" type="checkbox" disabled={!aiEnabled || aiBusy} checked={settings.mcpAllowWrites} onChange={(event) => void update({ mcpAllowWrites: event.target.checked })} /></div>
+        {aiAccess?.lastError && <p className="ai-access-error">AI access could not start: {aiAccess.lastError}</p>}
+        {aiMessage && <p className={aiMessageIsError ? 'ai-access-error' : 'ai-access-message'} role={aiMessageIsError ? 'alert' : 'status'}>{aiMessage}</p>}
+        {aiAccess && <details className="ai-technical-details"><summary>Technical details</summary><div><span>Local service</span><strong>{aiAccess.running ? `Running on port ${aiAccess.port ?? settings.mcpPort}` : 'Stopped'}</strong>{aiAccess.endpoint && <code title={aiAccess.endpoint}>{aiAccess.endpoint}</code>}</div></details>}
       </section>
       <section className="backup-settings">
         <div className="settings-section-title"><div><h3>Backup &amp; recovery</h3><p>Save the complete Noteleaf library and attachments to a synced or local folder.</p></div><span className={`provider-badge ${backup?.provider || 'none'}`}>{providerName}</span></div>
@@ -637,3 +682,4 @@ export function App() {
     {toast && <ToastNotice toast={toast} onClose={() => setToast(undefined)} />}
   </div>;
 }
+

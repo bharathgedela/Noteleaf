@@ -2,6 +2,14 @@
 
 All notable changes to Noteleaf are documented here.
 
+## 1.1.1 — 2026-08-28
+
+- Replaces manual MCP configuration copying with one **Enable AI access** switch.
+- Safely configures Claude Desktop automatically on Windows and macOS, preserving unrelated settings and MCP servers.
+- Removes only Noteleaf's Claude connection when AI access is disabled and reports malformed Claude configuration without overwriting it.
+- Adds clear per-provider status cards, a guided ChatGPT Secure MCP Tunnel action, a separate write-access opt-in, and collapsed technical details.
+- Reconciles enabled AI access automatically when Noteleaf starts, so connected clients can query the library directly without per-question scripts.
+
 ## 1.1.0 — 2026-08-28
 
 - Adds a built-in Model Context Protocol server for Claude, ChatGPT, Codex, and other compatible AI clients.

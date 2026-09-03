@@ -6,7 +6,7 @@
 
 Noteleaf is a polished, local-first notebook, daily task tracker, and Markdown workspace for Windows and macOS. Notes stay on your computer, save automatically, and can be protected with portable backups in a local, OneDrive, or Google Drive-synced folder.
 
-Current release: **1.1.0**
+Current release: **1.1.1**
 
 See [CHANGELOG.md](CHANGELOG.md) for release notes.
 
@@ -22,9 +22,9 @@ See [CHANGELOG.md](CHANGELOG.md) for release notes.
 - Search across the local library, use focus mode, and switch efficiently from the keyboard.
 - Create one-click backups and schedule hourly, daily, or weekly backups with configurable retention.
 - Restore integrity-checked `.notesbackup` archives after an automatic safety backup.
-- Connect Claude, ChatGPT, or another compatible client through the built-in MCP server to search, read, and—when explicitly enabled—update notes and daily tasks.
+- Turn on **AI access** once to automatically configure Claude Desktop and prepare a guided ChatGPT connection. Connected clients can search, read, and—when explicitly enabled—update notes and daily tasks without copy-paste or per-question scripts.
 
-See [docs/mcp.md](docs/mcp.md) for MCP tools, Claude configuration, ChatGPT tunnel setup, and the security model.
+See [docs/mcp.md](docs/mcp.md) for MCP tools, the one-switch Claude setup, ChatGPT's one-time account authorization, and the security model.
 
 ## Keyboard shortcuts
 
@@ -39,14 +39,14 @@ See [docs/mcp.md](docs/mcp.md) for MCP tools, Claude configuration, ChatGPT tunn
 
 ## Install Noteleaf
 
-These commands download the correct asset from the latest [GitHub release](https://github.com/bharathgedela/Noteleaf/releases), verify its SHA-256 checksum, and start Noteleaf. No Git, Node.js, or npm installation is required.
+These commands download the correct asset from the latest [GitHub release](https://github.com/bharathgedela/notes_app/releases), verify its SHA-256 checksum, and start Noteleaf. No Git, Node.js, or npm installation is required.
 
 ### Windows x64 — one command
 
 Run in PowerShell:
 
 ```powershell
-irm "https://raw.githubusercontent.com/bharathgedela/Noteleaf/main/scripts/install.ps1?$(New-Guid)" | iex
+irm "https://raw.githubusercontent.com/bharathgedela/notes_app/main/scripts/install.ps1?$(New-Guid)" | iex
 ```
 
 Complete the displayed Noteleaf setup wizard.
@@ -56,7 +56,7 @@ Complete the displayed Noteleaf setup wizard.
 Run in Terminal. The script automatically selects Apple Silicon or Intel and installs Noteleaf in `~/Applications`:
 
 ```sh
-curl -fsSL "https://raw.githubusercontent.com/bharathgedela/Noteleaf/main/scripts/install.sh?$(date +%s)" | sh
+curl -fsSL "https://raw.githubusercontent.com/bharathgedela/notes_app/main/scripts/install.sh?$(date +%s)" | sh
 ```
 
 The bootstrap scripts are readable in [`scripts/install.ps1`](scripts/install.ps1) and [`scripts/install.sh`](scripts/install.sh) before running them. Until public builds are Developer ID signed and notarized, macOS may require choosing **Open** from Finder's context menu on first launch; unsigned Windows builds may similarly display SmartScreen.
