@@ -2,6 +2,11 @@
 
 All notable changes to Noteleaf are documented here.
 
+## Unreleased
+
+- Adds one-switch ChatGPT Desktop and local Codex client access by safely managing only Noteleaf's block in the shared local MCP configuration.
+- Keeps ChatGPT web as a separate, optional Secure MCP Tunnel workflow because hosted chats cannot read a computer's local MCP configuration.
+
 ## 1.2.1 — 2026-09-03
 
 - Updates TipTap and its ProseMirror dependencies to patched releases so the production dependency audit passes with zero known vulnerabilities.

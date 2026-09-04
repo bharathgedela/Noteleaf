@@ -22,10 +22,10 @@ See [CHANGELOG.md](CHANGELOG.md) for release notes.
 - Search across the local library, use focus mode, and switch efficiently from the keyboard.
 - Create one-click backups and schedule hourly, daily, or weekly backups with configurable retention.
 - Restore integrity-checked `.notesbackup` archives after an automatic safety backup.
-- Turn on **AI access** once to automatically configure Claude Desktop and prepare a guided ChatGPT connection. Connected clients can search, read, and—when explicitly enabled—update notes and daily tasks without copy-paste or per-question scripts.
+- Turn on **AI access** once to automatically configure Claude Desktop, ChatGPT Desktop, and local Codex clients. Connected clients can search, read, and—when explicitly enabled—update notes and daily tasks without copy-paste or per-question scripts. ChatGPT on the web can use the same tools through OpenAI's optional private-tunnel flow.
 - Select important text and use the shield button to protect it from accidental edits while keeping it selectable and copyable. Protected text is also omitted from MCP reads and search results. This is not encryption or a substitute for a password manager.
 
-See [docs/mcp.md](docs/mcp.md) for MCP tools, the one-switch Claude setup, ChatGPT's one-time account authorization, and the security model.
+See [docs/mcp.md](docs/mcp.md) for MCP tools, the one-switch desktop setup, the optional ChatGPT web connection, and the security model.
 
 ## Keyboard shortcuts
 

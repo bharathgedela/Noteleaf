@@ -220,7 +220,9 @@ function SettingsDialog({ settings, onChange, onClose }: { settings: AppSettings
     setAiBusy(true); setAiMessage(''); setAiMessageIsError(false);
     try {
       const status = await action();
-      setAiAccess(status); setAiMessage(message);
+      setAiAccess(status);
+      setAiMessageIsError(Boolean(status.lastError));
+      setAiMessage(status.lastError ? 'Some AI connections need attention. Review the details below.' : message);
       onChange({ ...settings, mcpEnabled: status.enabled });
     } catch (error) {
       setAiMessageIsError(true);
@@ -241,10 +243,10 @@ function SettingsDialog({ settings, onChange, onClose }: { settings: AppSettings
       <div className="setting-row"><label>Default Markdown mode</label><select value={settings.defaultMarkdownMode} onChange={(e) => void update({ defaultMarkdownMode: e.target.value as AppSettings['defaultMarkdownMode'] })}><option value="preview">Preview</option><option value="edit">Edit</option><option value="split">Split</option></select></div>
       <div className="setting-row"><label>Spell check</label><input type="checkbox" checked={settings.spellcheck} onChange={(e) => void update({ spellcheck: e.target.checked })} /></div>
       <section className="ai-access-settings">
-        <div className="settings-section-title"><div><h3>AI access</h3><p>Ask Claude or ChatGPT to find, summarize, and organize your Noteleaf library.</p></div><span className={`ai-access-badge ${aiState}`}>{aiAccess?.lastError ? 'Error' : aiAccess?.running ? 'Ready' : 'Off'}</span></div>
+        <div className="settings-section-title"><div><h3>AI access</h3><p>Ask Claude, ChatGPT Desktop, or local Codex clients to work with your Noteleaf library.</p></div><span className={`ai-access-badge ${aiState}`}>{aiAccess?.lastError ? 'Error' : aiAccess?.running ? 'Ready' : 'Off'}</span></div>
         <div className={`ai-access-master${aiEnabled ? ' enabled' : ''}`}>
           <span className="ai-access-master-icon" aria-hidden="true"><Sparkles size={20} /></span>
-          <div><strong>{aiEnabled ? 'AI access is enabled' : 'Enable AI access'}</strong><small>{aiEnabled ? 'Noteleaf is ready for the AI apps you connect.' : 'One switch securely prepares Noteleaf and configures supported apps.'}</small></div>
+          <div><strong>{aiEnabled ? 'AI access is enabled' : 'Enable AI access'}</strong><small>{aiEnabled ? 'Noteleaf is ready for the desktop AI apps you connect.' : 'One switch privately configures Claude and ChatGPT Desktop.'}</small></div>
           <button className="ai-access-switch" type="button" role="switch" aria-checked={aiEnabled} aria-label="Enable AI access" disabled={aiBusy} onClick={() => void runAiAction(aiEnabled ? aiApi.disable : aiApi.enable, aiEnabled ? 'AI access disabled.' : 'AI access enabled.')}><span /></button>
         </div>
         <div className="ai-provider-grid" aria-label="AI connections">
@@ -254,11 +256,11 @@ function SettingsDialog({ settings, onChange, onClose }: { settings: AppSettings
           </article>
           <article className={`ai-provider-card ${aiProviderTone(chatgpt.state, aiEnabled)}`}>
             <div className="ai-provider-icon chatgpt" aria-hidden="true"><MessageSquareText size={18} /></div>
-            <div className="ai-provider-copy"><div><strong>ChatGPT</strong><span className={`ai-provider-status ${aiProviderTone(chatgpt.state, aiEnabled)}`}>{aiProviderLabel(chatgpt.state, aiEnabled)}</span></div><p>{chatgpt.detail || (chatgpt.state === 'connected' ? 'ChatGPT can reach the local Noteleaf service.' : aiEnabled ? 'Complete a one-time connection in ChatGPT.' : 'Enable AI access before connecting ChatGPT.')}</p>{aiEnabled && <button className="ai-provider-action" disabled={aiBusy} onClick={() => void runAiAction(aiApi.openChatGptSetup, chatgpt.state === 'connected' ? 'Opened ChatGPT connection settings.' : 'Continue setup in the opened window.')}>{chatgpt.state === 'connected' ? 'Manage connection' : 'Connect ChatGPT'}</button>}</div>
+            <div className="ai-provider-copy"><div><strong>ChatGPT Desktop + Codex</strong><span className={`ai-provider-status ${aiProviderTone(chatgpt.state, aiEnabled)}`}>{chatgpt.state === 'connected' && aiEnabled ? 'Configured' : aiProviderLabel(chatgpt.state, aiEnabled)}</span></div><p>{chatgpt.detail || (chatgpt.state === 'restart-required' ? 'Configuration is complete. Restart ChatGPT Desktop once.' : chatgpt.state === 'connected' ? 'ChatGPT Desktop and the Codex CLI/IDE can reach Noteleaf while it is open.' : aiEnabled ? 'Switch AI access off and on to repair this connection.' : 'Enable AI access to configure ChatGPT Desktop automatically.')}</p>{aiEnabled && <button className="ai-provider-action" disabled={aiBusy} onClick={() => void runAiAction(aiApi.openChatGptWebSetup, 'Opened the optional ChatGPT web setup guide.')}>ChatGPT web setup</button>}</div>
           </article>
         </div>
         <div className="ai-write-permission"><span aria-hidden="true"><ShieldCheck size={17} /></span><label htmlFor="ai-write-access"><strong>Allow AI to make changes</strong><small>Optional. When off, AI can search and read but cannot create or update content.</small></label><input id="ai-write-access" type="checkbox" disabled={!aiEnabled || aiBusy} checked={settings.mcpAllowWrites} onChange={(event) => void update({ mcpAllowWrites: event.target.checked })} /></div>
-        {aiAccess?.lastError && <p className="ai-access-error">AI access could not start: {aiAccess.lastError}</p>}
+        {aiAccess?.lastError && <p className="ai-access-error">AI access needs attention: {aiAccess.lastError}</p>}
         {aiMessage && <p className={aiMessageIsError ? 'ai-access-error' : 'ai-access-message'} role={aiMessageIsError ? 'alert' : 'status'}>{aiMessage}</p>}
         {aiAccess && <details className="ai-technical-details"><summary>Technical details</summary><div><span>Local service</span><strong>{aiAccess.running ? `Running on port ${aiAccess.port ?? settings.mcpPort}` : 'Stopped'}</strong>{aiAccess.endpoint && <code title={aiAccess.endpoint}>{aiAccess.endpoint}</code>}</div></details>}
       </section>
@@ -682,4 +684,3 @@ export function App() {
     {toast && <ToastNotice toast={toast} onClose={() => setToast(undefined)} />}
   </div>;
 }
-

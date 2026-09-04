@@ -25,7 +25,7 @@ Write tools are not advertised until **Allow AI changes** is enabled. Noteleaf d
 2. Turn on **Enable AI access**.
 3. Leave **Allow AI to make changes** off while testing read access.
 
-That single switch starts Noteleaf's private local MCP service and automatically configures supported local clients. The connection stays available while Noteleaf is running, so an AI client reads the library directly through MCP—there is no per-question export or reader script.
+That single switch starts Noteleaf's private local MCP service and automatically configures Claude Desktop, ChatGPT Desktop, and local Codex clients. The connection stays available while Noteleaf is running, so an AI client reads the library directly through MCP—there is no per-question export or reader script.
 
 The HTTP service binds only to `127.0.0.1`. Its endpoint contains a random 192-bit token and is shown only inside the collapsed **Technical details** section. Treat the complete URL as a password.
 
@@ -43,14 +43,32 @@ The generated connection points at the installed Noteleaf executable and exact N
 
 Anthropic now also supports local desktop extensions and remote Streamable HTTP connectors. See its [local MCP guidance](https://support.anthropic.com/en/articles/10949351-getting-started-with-local-mcp-servers-on-claude-desktop) and [remote MCP guidance](https://support.anthropic.com/en/articles/11503834-building-custom-integrations-via-remote-mcp-servers).
 
-## ChatGPT: one-time account connection
+## ChatGPT Desktop and Codex local clients: private local connection
 
-ChatGPT runs in the cloud and cannot directly call a loopback address on your computer. OpenAI therefore requires a one-time authenticated [Secure MCP Tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels) connection for a private local server.
+Current ChatGPT Desktop releases support local MCP servers and share `~/.codex/config.toml` with the Codex CLI and Codex IDE extension. Noteleaf configures that file automatically on Windows and macOS.
+
+1. Turn on **Enable AI access**.
+2. If ChatGPT Desktop was already open, completely quit and reopen it once.
+3. In ChatGPT Desktop, type `/mcp` to confirm that **noteleaf** is available.
+4. Ask: “Use Noteleaf to list my notebooks.”
+
+Noteleaf adds a clearly marked managed block for `mcp_servers.noteleaf` and preserves every unrelated Codex setting and MCP server. Turning AI access off removes only that managed block and stops the loopback service immediately. If the TOML file is invalid or already contains a manually managed `noteleaf` server, Noteleaf leaves it unchanged and explains how to resolve the conflict.
+
+This local connection uses Noteleaf's tokenized `127.0.0.1` Streamable HTTP endpoint, so no API key, tunnel helper, or separate Node.js installation is required. Keep Noteleaf open while using it. The shared config also makes Noteleaf available to the Codex CLI and IDE extension on the same computer. ChatGPT and Codex still apply their own tool-approval policy; Noteleaf independently withholds all write tools until **Allow AI to make changes** is enabled.
+
+See OpenAI's [local MCP documentation](https://learn.chatgpt.com/docs/extend/mcp) for the supported ChatGPT Desktop and Codex flow.
+
+On an organization-managed computer, an administrator's [MCP allowlist](https://learn.chatgpt.com/docs/enterprise/managed-configuration) can still disable the Noteleaf entry; Noteleaf does not bypass managed ChatGPT or Codex policy.
+
+## ChatGPT on the web: optional private tunnel
+
+ChatGPT on the web runs in the cloud and cannot directly call a loopback address on your computer. OpenAI's [Secure MCP Tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels) can bridge a private local server for developer-mode use, but it requires an OpenAI Platform tunnel, a runtime API key, and the appropriate organization or workspace permissions.
 
 1. Turn on **Enable AI access** in Noteleaf.
-2. Select **Connect ChatGPT**. Noteleaf opens OpenAI's guided Secure MCP Tunnel setup.
-3. Complete the one-time tunnel and ChatGPT connector authorization in the intended workspace.
-4. Keep Noteleaf open when you want ChatGPT to access the library.
+2. Select **ChatGPT web setup**. Noteleaf opens OpenAI's guided Secure MCP Tunnel setup.
+3. Create a tunnel in OpenAI Platform, configure `tunnel-client` with its tunnel ID and runtime API key, and point it at the tokenized endpoint shown under **Technical details**.
+4. In the intended ChatGPT workspace, enable developer mode and create an app that uses that tunnel.
+5. Keep both Noteleaf and `tunnel-client run` running while ChatGPT web uses the library.
 
 This account authorization cannot be silently performed by a desktop application: it is deliberately protected by OpenAI workspace permissions. After it is completed, ChatGPT invokes Noteleaf's MCP tools directly; you do not copy note content or run a reader script for each question.
 

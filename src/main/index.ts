@@ -10,6 +10,7 @@ import { applyPendingRestore, BackupService } from './backup/service.js';
 import { migrateLegacyAppData } from './app-data.js';
 import { McpHttpService } from './mcp/service.js';
 import { ClaudeDesktopConfigService } from './ai-access/claude-desktop.js';
+import { ChatGptDesktopConfigService } from './ai-access/chatgpt-desktop.js';
 import { AiAccessService } from './ai-access/service.js';
 
 const APP_NAME = 'Noteleaf';
@@ -134,7 +135,8 @@ else {
       const status = mcpService!.status();
       return { command: status.executablePath, args: status.stdioArguments, env: status.stdioEnvironment };
     });
-    const aiAccess = new AiAccessService(repository, mcpService, claudeDesktop, (url) => shell.openExternal(url));
+    const chatGptDesktop = new ChatGptDesktopConfigService(() => mcpService!.status().endpoint);
+    const aiAccess = new AiAccessService(repository, mcpService, claudeDesktop, chatGptDesktop, (url) => shell.openExternal(url));
     registerIpc(repository, files, backups, mcpService, aiAccess);
     backups.startScheduler();
     await aiAccess.syncAtStartup();

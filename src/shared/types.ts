@@ -228,7 +228,7 @@ export interface NotesApi {
     status(): Promise<AiAccessStatus>;
     enable(): Promise<AiAccessStatus>;
     disable(): Promise<AiAccessStatus>;
-    openChatGptSetup(): Promise<AiAccessStatus>;
+    openChatGptWebSetup(): Promise<AiAccessStatus>;
   };
   system: {
     openExternal(url: string): Promise<void>;

@@ -64,7 +64,7 @@ const api: NotesApi = {
     status: () => invoke('ai-access:status'),
     enable: () => invoke('ai-access:enable'),
     disable: () => invoke('ai-access:disable'),
-    openChatGptSetup: () => invoke('ai-access:open-chatgpt-setup'),
+    openChatGptWebSetup: () => invoke('ai-access:open-chatgpt-web-setup'),
   },
   system: { openExternal: (url) => invoke('system:open-external', url), platform: () => process.platform },
   events: {

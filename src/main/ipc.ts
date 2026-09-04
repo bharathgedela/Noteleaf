@@ -16,7 +16,7 @@ const CHANNELS = [
   'files:attachment', 'settings:get', 'settings:update', 'settings:open-data', 'system:open-external',
   'backup:status', 'backup:choose-folder', 'backup:create', 'backup:set-schedule', 'backup:restore', 'backup:open-folder',
   'mcp:status', 'mcp:regenerate-access-link',
-  'ai-access:status', 'ai-access:enable', 'ai-access:disable', 'ai-access:open-chatgpt-setup',
+  'ai-access:status', 'ai-access:enable', 'ai-access:disable', 'ai-access:open-chatgpt-web-setup',
 ] as const;
 
 function text(value: unknown, label: string, max = 500): string {
@@ -99,9 +99,8 @@ export function registerIpc(
   ipcMain.handle('files:attachment', (_event, pageId, dataUrl) => files.saveAttachment(id(pageId), source(dataUrl)));
   ipcMain.handle('settings:get', () => repository.getSettings());
   ipcMain.handle('settings:update', async (_event, patch: Partial<AppSettings>) => {
-    const updated = repository.updateSettings(patch);
-    if (Object.hasOwn(patch, 'mcpEnabled')) await aiAccess.syncAtStartup();
-    else if (Object.keys(patch).some((key) => key.startsWith('mcp'))) await mcp.configure(updated);
+    repository.updateSettings(patch);
+    if (Object.keys(patch).some((key) => key.startsWith('mcp'))) await aiAccess.syncAtStartup();
     return repository.getSettings();
   });
   ipcMain.handle('settings:open-data', () => files.openDataFolder());
@@ -112,11 +111,11 @@ export function registerIpc(
   ipcMain.handle('backup:restore', () => backups.restore());
   ipcMain.handle('backup:open-folder', () => backups.openFolder());
   ipcMain.handle('mcp:status', () => mcp.status());
-  ipcMain.handle('mcp:regenerate-access-link', () => mcp.regenerateAccessLink());
+  ipcMain.handle('mcp:regenerate-access-link', () => aiAccess.regenerateAccessLink());
   ipcMain.handle('ai-access:status', () => aiAccess.status());
   ipcMain.handle('ai-access:enable', () => aiAccess.enable());
   ipcMain.handle('ai-access:disable', () => aiAccess.disable());
-  ipcMain.handle('ai-access:open-chatgpt-setup', () => aiAccess.openChatGptSetup());
+  ipcMain.handle('ai-access:open-chatgpt-web-setup', () => aiAccess.openChatGptWebSetup());
   ipcMain.handle('system:open-external', async (_event, url) => {
     const target = new URL(text(url, 'URL', 4096));
     if (target.protocol !== 'http:' && target.protocol !== 'https:') throw new Error('Unsupported URL');

@@ -321,6 +321,7 @@ Where a package offers multiple licenses, Noteleaf elects the Apache-2.0-compati
 | side-channel-weakmap | 1.0.2 | MIT |
 | simple-concat | 1.0.1 | MIT |
 | simple-get | 4.0.1 | MIT |
+| smol-toml | 1.8.0 | BSD-3-Clause |
 | source-map-js | 1.2.1 | BSD-3-Clause |
 | space-separated-tokens | 2.0.2 | MIT |
 | statuses | 2.0.2 | MIT |
