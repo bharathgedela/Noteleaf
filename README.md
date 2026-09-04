@@ -6,7 +6,7 @@
 
 Noteleaf is a polished, local-first notebook, daily task tracker, and Markdown workspace for Windows and macOS. Notes stay on your computer, save automatically, and can be protected with portable backups sent directly to a private Noteleaf folder in Google Drive or OneDrive. Local and desktop-synced folders remain supported.
 
-[Privacy policy](https://bharathgedela.github.io/Noteleaf/privacy/) · [Terms of use](https://bharathgedela.github.io/Noteleaf/terms/)
+[Privacy policy](https://bharathgedela.github.io/Noteleaf/privacy.html) · [Terms of use](https://bharathgedela.github.io/Noteleaf/terms.html)
 
 Current release: **1.3.0**
 

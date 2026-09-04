@@ -17,7 +17,7 @@ Noteleaf can save portable backups directly to a dedicated folder in Google Driv
 - Google can see ordinary file metadata such as the backup filename, size, and upload time, but not the encrypted contents.
 - You can disconnect the account at any time from Noteleaf or your Google Account settings.
 
-[Read the privacy policy](privacy/) · [Read the terms](terms/) · [View source code](https://github.com/bharathgedela/Noteleaf) · [Download releases](https://github.com/bharathgedela/Noteleaf/releases)
+[Read the privacy policy](privacy.html) · [Read the terms](terms.html) · [View source code](https://github.com/bharathgedela/Noteleaf) · [Download releases](https://github.com/bharathgedela/Noteleaf/releases)
 
 ## Support
 
