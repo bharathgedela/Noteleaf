@@ -13,6 +13,7 @@ import type {
   TaskStatus,
 } from '../../shared/types.js';
 import { runMigrations } from './migrations.js';
+import { createVaultSalt, decryptVaultPayload, deriveVaultKey, encryptVaultPayload, verifyVaultKey, vaultVerifier } from '../vault/crypto.js';
 
 const DEFAULT_SETTINGS: AppSettings = {
   theme: 'light',
@@ -61,7 +62,9 @@ export interface McpPageSummary extends PageSummary {
 }
 
 function now(): string { return new Date().toISOString(); }
+function escapeHtml(value: string): string { return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&#39;'); }
 function summary(row: Row): PageSummary {
+  const isEncrypted = Boolean(row.is_encrypted);
   return {
     id: String(row.id), sectionId: String(row.section_id), title: String(row.title),
     position: Number(row.position), isFavorite: Boolean(row.is_favorite),
@@ -70,6 +73,8 @@ function summary(row: Row): PageSummary {
     isSidebarVisible: Boolean(row.sidebar_visible),
     parentPageId: row.parent_page_id ? String(row.parent_page_id) : null,
     externalPath: row.external_path ? String(row.external_path) : null,
+    isEncrypted,
+    isLocked: isEncrypted,
   };
 }
 function page(row: Row): Page {
@@ -89,20 +94,142 @@ function task(row: Row): TaskItem {
 
 export class NotesRepository {
   readonly db: Database.Database;
+  private vaultKey?: Buffer;
 
   constructor(path: string) {
     this.db = new Database(path);
     this.db.pragma('journal_mode = WAL');
     this.db.pragma('foreign_keys = ON');
     this.db.pragma('busy_timeout = 5000');
+    this.db.pragma('secure_delete = ON');
     runMigrations(this.db);
     this.seed();
   }
 
-  close(): void { if (this.db.open) this.db.close(); }
+  close(): void { this.lockVault(); if (this.db.open) this.db.close(); }
 
   async backupTo(destination: string): Promise<void> {
     await this.db.backup(destination);
+  }
+
+  vaultStatus(): import('../../shared/types.js').VaultStatus {
+    const configured = Boolean(this.db.prepare('SELECT 1 FROM vault_metadata WHERE id = 1').get());
+    const encryptedPageCount = Number((this.db.prepare('SELECT COUNT(*) AS count FROM pages WHERE is_encrypted = 1').get() as { count: number }).count);
+    return { configured, unlocked: configured && Boolean(this.vaultKey), encryptedPageCount };
+  }
+
+  async setupVault(password: string): Promise<void> {
+    if (this.vaultStatus().configured) throw new Error('The private-page vault is already configured');
+    if (password.length < 10) throw new Error('Use at least 10 characters for the vault password');
+    const salt = createVaultSalt();
+    const key = await deriveVaultKey(password, salt);
+    this.db.prepare('INSERT INTO vault_metadata(id, salt, verifier, kdf_version, created_at) VALUES (1, ?, ?, 1, ?)').run(salt, vaultVerifier(key), now());
+    this.replaceVaultKey(key);
+  }
+
+  async unlockVault(password: string): Promise<void> {
+    const metadata = this.db.prepare('SELECT salt, verifier, kdf_version FROM vault_metadata WHERE id = 1').get() as { salt: string; verifier: string; kdf_version: number } | undefined;
+    if (!metadata) throw new Error('The private-page vault has not been configured');
+    if (metadata.kdf_version !== 1) throw new Error('This vault uses an unsupported encryption version');
+    const key = await deriveVaultKey(password, metadata.salt);
+    if (!verifyVaultKey(key, metadata.verifier)) { key.fill(0); throw new Error('Incorrect vault password'); }
+    this.replaceVaultKey(key);
+  }
+
+  lockVault(): void {
+    this.vaultKey?.fill(0);
+    this.vaultKey = undefined;
+  }
+
+  private replaceVaultKey(key: Buffer): void {
+    this.vaultKey?.fill(0);
+    this.vaultKey = key;
+  }
+
+  private requireVaultKey(): Buffer {
+    if (!this.vaultKey) throw new Error('Unlock private pages first');
+    return this.vaultKey;
+  }
+
+  private decryptedPayload(row: Row): { title: string; contentHtml: string; contentMarkdown: string } {
+    const key = this.requireVaultKey();
+    const encrypted = row.encrypted_payload;
+    if (typeof encrypted !== 'string' || !encrypted) throw new Error('Encrypted page data is missing');
+    const parsed = JSON.parse(decryptVaultPayload(encrypted, key, String(row.id))) as Partial<{ title: string; contentHtml: string; contentMarkdown: string }>;
+    if (typeof parsed.title !== 'string' || typeof parsed.contentHtml !== 'string' || typeof parsed.contentMarkdown !== 'string') throw new Error('Encrypted page data is invalid');
+    return { title: parsed.title, contentHtml: parsed.contentHtml, contentMarkdown: parsed.contentMarkdown };
+  }
+
+  private revealSummary(row: Row): PageSummary {
+    const result = summary(row);
+    if (!result.isEncrypted || !this.vaultKey) return result;
+    return { ...result, title: this.decryptedPayload(row).title, isLocked: false };
+  }
+
+  private revealPage(row: Row): Page {
+    const result = page(row);
+    if (!result.isEncrypted || !this.vaultKey) return result;
+    const payload = this.decryptedPayload(row);
+    return { ...result, title: payload.title, contentHtml: payload.contentHtml, contentMarkdown: payload.contentMarkdown, isLocked: false };
+  }
+
+  isPageEncrypted(id: string): boolean {
+    return Boolean((this.db.prepare('SELECT is_encrypted FROM pages WHERE id = ?').get(id) as { is_encrypted?: number } | undefined)?.is_encrypted);
+  }
+
+  assertPageTreeEncryptable(id: string): void {
+    const rows = this.db.prepare(`WITH RECURSIVE page_tree(id) AS (
+      SELECT id FROM pages WHERE id = ?
+      UNION ALL SELECT p.id FROM pages p JOIN page_tree parent ON p.parent_page_id = parent.id
+    ) SELECT p.* FROM pages p JOIN page_tree tree ON tree.id = p.id`).all(id) as Row[];
+    if (!rows.length) throw new Error('Page not found');
+    if (rows.some((row) => row.external_path)) throw new Error('Linked Markdown files cannot be encrypted because their original files live outside Noteleaf');
+    if (rows.some((row) => String(row.content_html).includes('notes-asset://'))) throw new Error('Pages with embedded images cannot be encrypted yet. Remove the images and try again.');
+  }
+
+  encryptPageTree(id: string): string[] {
+    const key = this.requireVaultKey();
+    this.assertPageTreeEncryptable(id);
+    const rows = this.db.prepare(`WITH RECURSIVE page_tree(id) AS (
+      SELECT id FROM pages WHERE id = ?
+      UNION ALL SELECT p.id FROM pages p JOIN page_tree parent ON p.parent_page_id = parent.id
+    ) SELECT p.* FROM pages p JOIN page_tree tree ON tree.id = p.id`).all(id) as Row[];
+    if (!rows.length) throw new Error('Page not found');
+    const update = this.db.prepare(`UPDATE pages SET title = 'Locked page', content_html = '<p></p>', content_markdown = '',
+      encrypted_payload = ?, is_encrypted = 1, is_favorite = 0, updated_at = ? WHERE id = ?`);
+    this.db.transaction(() => {
+      for (const row of rows) {
+        if (row.is_encrypted) continue;
+        const payload = JSON.stringify({ title: String(row.title), contentHtml: String(row.content_html), contentMarkdown: String(row.content_markdown) });
+        update.run(encryptVaultPayload(payload, key, String(row.id)), now(), row.id);
+      }
+    })();
+    this.secureDatabaseAfterEncryption();
+    return rows.map((row) => String(row.id));
+  }
+
+  decryptPageTree(id: string): string[] {
+    this.requireVaultKey();
+    const rows = this.db.prepare(`WITH RECURSIVE page_tree(id) AS (
+      SELECT id FROM pages WHERE id = ?
+      UNION ALL SELECT p.id FROM pages p JOIN page_tree parent ON p.parent_page_id = parent.id
+    ) SELECT p.* FROM pages p JOIN page_tree tree ON tree.id = p.id`).all(id) as Row[];
+    if (!rows.length) throw new Error('Page not found');
+    const update = this.db.prepare(`UPDATE pages SET title = ?, content_html = ?, content_markdown = ?,
+      encrypted_payload = NULL, is_encrypted = 0, updated_at = ? WHERE id = ?`);
+    this.db.transaction(() => {
+      for (const row of rows) {
+        if (!row.is_encrypted) continue;
+        const payload = this.decryptedPayload(row);
+        update.run(payload.title, payload.contentHtml, payload.contentMarkdown, now(), row.id);
+      }
+    })();
+    return rows.map((row) => String(row.id));
+  }
+
+  private secureDatabaseAfterEncryption(): void {
+    this.db.pragma('wal_checkpoint(TRUNCATE)');
+    this.db.exec('VACUUM');
   }
 
   private seed(): void {
@@ -195,19 +322,19 @@ You are ready—turn this guide into your own first note, or keep it nearby as a
       id: String(n.id), name: String(n.name), position: Number(n.position),
       sections: (this.db.prepare('SELECT * FROM sections WHERE notebook_id = ? ORDER BY position, name').all(n.id) as Row[]).map((s): SectionTree => ({
         id: String(s.id), notebookId: String(s.notebook_id), name: String(s.name), position: Number(s.position),
-        pages: (this.db.prepare('SELECT * FROM pages WHERE section_id = ? AND is_deleted = 0 AND sidebar_visible = 1 ORDER BY position, title').all(s.id) as Row[]).map(summary),
+        pages: (this.db.prepare('SELECT * FROM pages WHERE section_id = ? AND is_deleted = 0 AND sidebar_visible = 1 ORDER BY position, title').all(s.id) as Row[]).map((row) => this.revealSummary(row)),
       })),
     }));
-    const favorites = (this.db.prepare('SELECT * FROM pages WHERE is_deleted = 0 AND sidebar_visible = 1 AND is_favorite = 1 ORDER BY updated_at DESC LIMIT 20').all() as Row[]).map(summary);
-    const recent = (this.db.prepare('SELECT * FROM pages WHERE is_deleted = 0 AND sidebar_visible = 1 AND last_opened_at IS NOT NULL ORDER BY last_opened_at DESC LIMIT 10').all() as Row[]).map(summary);
-    const trash = (this.db.prepare('SELECT * FROM pages WHERE is_deleted = 1 AND sidebar_visible = 1 ORDER BY updated_at DESC').all() as Row[]).map(summary);
+    const favorites = (this.db.prepare('SELECT * FROM pages WHERE is_deleted = 0 AND is_encrypted = 0 AND sidebar_visible = 1 AND is_favorite = 1 ORDER BY updated_at DESC LIMIT 20').all() as Row[]).map(summary);
+    const recent = (this.db.prepare('SELECT * FROM pages WHERE is_deleted = 0 AND is_encrypted = 0 AND sidebar_visible = 1 AND last_opened_at IS NOT NULL ORDER BY last_opened_at DESC LIMIT 10').all() as Row[]).map(summary);
+    const trash = (this.db.prepare('SELECT * FROM pages WHERE is_deleted = 1 AND sidebar_visible = 1 ORDER BY updated_at DESC').all() as Row[]).map((row) => this.revealSummary(row));
     return { notebooks, favorites, recent, trash };
   }
 
   mcpNotebooks(): McpNotebookSummary[] {
     return (this.db.prepare(`SELECT n.id, n.name, n.position, n.updated_at,
       COUNT(DISTINCT s.id) AS section_count,
-      COUNT(DISTINCT CASE WHEN p.is_deleted = 0 THEN p.id END) AS page_count
+      COUNT(DISTINCT CASE WHEN p.is_deleted = 0 AND p.is_encrypted = 0 THEN p.id END) AS page_count
       FROM notebooks n
       LEFT JOIN sections s ON s.notebook_id = n.id
       LEFT JOIN pages p ON p.section_id = s.id
@@ -220,7 +347,7 @@ You are ready—turn this guide into your own first note, or keep it nearby as a
 
   mcpSections(notebookId?: string): McpSectionSummary[] {
     const sql = `SELECT s.id, s.notebook_id, n.name AS notebook, s.name, s.position, s.updated_at,
-      COUNT(CASE WHEN p.is_deleted = 0 THEN p.id END) AS page_count
+      COUNT(CASE WHEN p.is_deleted = 0 AND p.is_encrypted = 0 THEN p.id END) AS page_count
       FROM sections s JOIN notebooks n ON n.id = s.notebook_id
       LEFT JOIN pages p ON p.section_id = s.id
       ${notebookId ? 'WHERE s.notebook_id = ?' : ''}
@@ -236,7 +363,7 @@ You are ready—turn this guide into your own first note, or keep it nearby as a
   mcpPages(sectionId: string, includeChildPages = true, limit = 100, offset = 0): McpPageSummary[] {
     const rows = this.db.prepare(`SELECT p.*, s.notebook_id, s.name AS section, n.name AS notebook
       FROM pages p JOIN sections s ON s.id = p.section_id JOIN notebooks n ON n.id = s.notebook_id
-      WHERE p.section_id = ? AND p.is_deleted = 0 ${includeChildPages ? '' : 'AND p.sidebar_visible = 1'}
+      WHERE p.section_id = ? AND p.is_deleted = 0 AND p.is_encrypted = 0 ${includeChildPages ? '' : 'AND p.sidebar_visible = 1'}
       ORDER BY p.position, p.title LIMIT ? OFFSET ?`).all(sectionId, Math.min(Math.max(limit, 1), 200), Math.max(offset, 0)) as Row[];
     return rows.map((row) => ({
       ...summary(row), notebookId: String(row.notebook_id), notebook: String(row.notebook), section: String(row.section),
@@ -246,7 +373,7 @@ You are ready—turn this guide into your own first note, or keep it nearby as a
   mcpPageLocation(id: string): McpPageSummary | undefined {
     const row = this.db.prepare(`SELECT p.*, s.notebook_id, s.name AS section, n.name AS notebook
       FROM pages p JOIN sections s ON s.id = p.section_id JOIN notebooks n ON n.id = s.notebook_id
-      WHERE p.id = ?`).get(id) as Row | undefined;
+      WHERE p.id = ? AND p.is_encrypted = 0`).get(id) as Row | undefined;
     return row ? { ...summary(row), notebookId: String(row.notebook_id), notebook: String(row.notebook), section: String(row.section) } : undefined;
   }
 
@@ -304,7 +431,18 @@ You are ready—turn this guide into your own first note, or keep it nearby as a
   createPage(sectionId: string, title = 'Untitled', options: { sidebarVisible?: boolean; parentPageId?: string } = {}): Page {
     const id = randomUUID(); const timestamp = now();
     const pos = (this.db.prepare('SELECT COALESCE(MAX(position), -1) + 1 AS p FROM pages WHERE section_id = ?').get(sectionId) as { p: number }).p;
-    this.db.prepare(`INSERT INTO pages(id, section_id, title, position, created_at, updated_at, last_opened_at, sidebar_visible, parent_page_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, sectionId, title, pos, timestamp, timestamp, timestamp, options.sidebarVisible === false ? 0 : 1, options.parentPageId || null);
+    const parent = options.parentPageId
+      ? this.db.prepare('SELECT section_id, is_encrypted FROM pages WHERE id = ? AND is_deleted = 0').get(options.parentPageId) as { section_id: string; is_encrypted: number } | undefined
+      : undefined;
+    if (options.parentPageId && !parent) throw new Error('Parent page not found');
+    if (parent && String(parent.section_id) !== sectionId) throw new Error('Child pages must stay in the same section as their parent');
+    if (parent?.is_encrypted) {
+      const payload = encryptVaultPayload(JSON.stringify({ title, contentHtml: '<p></p>', contentMarkdown: '' }), this.requireVaultKey(), id);
+      this.db.prepare(`INSERT INTO pages(id, section_id, title, position, created_at, updated_at, last_opened_at, sidebar_visible, parent_page_id, is_encrypted, encrypted_payload)
+        VALUES (?, ?, 'Locked page', ?, ?, ?, ?, ?, ?, 1, ?)`).run(id, sectionId, pos, timestamp, timestamp, timestamp, options.sidebarVisible === false ? 0 : 1, options.parentPageId, payload);
+    } else {
+      this.db.prepare(`INSERT INTO pages(id, section_id, title, position, created_at, updated_at, last_opened_at, sidebar_visible, parent_page_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(id, sectionId, title, pos, timestamp, timestamp, timestamp, options.sidebarVisible === false ? 0 : 1, options.parentPageId || null);
+    }
     return this.getPage(id);
   }
   linkExternalPage(sectionId: string, title: string, externalPath: string): Page {
@@ -335,13 +473,28 @@ You are ready—turn this guide into your own first note, or keep it nearby as a
   readPage(id: string): Page {
     const row = this.db.prepare('SELECT * FROM pages WHERE id = ?').get(id) as Row | undefined;
     if (!row) throw new Error('Page not found');
+    return this.revealPage(row);
+  }
+  readPageForMcp(id: string): Page {
+    const row = this.db.prepare('SELECT * FROM pages WHERE id = ? AND is_encrypted = 0').get(id) as Row | undefined;
+    if (!row) throw new Error('Page not found');
     return page(row);
   }
   savePage(id: string, input: { title: string; contentHtml: string; contentMarkdown: string }): Page {
-    this.db.prepare('UPDATE pages SET title = ?, content_html = ?, content_markdown = ?, updated_at = ? WHERE id = ?').run(input.title, input.contentHtml, input.contentMarkdown, now(), id);
+    const row = this.db.prepare('SELECT * FROM pages WHERE id = ?').get(id) as Row | undefined;
+    if (!row) throw new Error('Page not found');
+    if (row.is_encrypted) {
+      const encrypted = encryptVaultPayload(JSON.stringify(input), this.requireVaultKey(), id);
+      this.db.prepare(`UPDATE pages SET title = 'Locked page', content_html = '<p></p>', content_markdown = '', encrypted_payload = ?, updated_at = ? WHERE id = ?`).run(encrypted, now(), id);
+    } else {
+      this.db.prepare('UPDATE pages SET title = ?, content_html = ?, content_markdown = ?, updated_at = ? WHERE id = ?').run(input.title, input.contentHtml, input.contentMarkdown, now(), id);
+    }
     return this.readPage(id);
   }
-  renamePage(id: string, title: string): void { this.db.prepare('UPDATE pages SET title = ?, updated_at = ? WHERE id = ?').run(title, now(), id); }
+  renamePage(id: string, title: string): void {
+    const current = this.readPage(id);
+    this.savePage(id, { title, contentHtml: current.contentHtml, contentMarkdown: current.contentMarkdown });
+  }
   trashPage(id: string): void { this.db.prepare('UPDATE pages SET is_deleted = 1, updated_at = ? WHERE id = ?').run(now(), id); }
   restorePage(id: string): void { this.db.prepare('UPDATE pages SET is_deleted = 0, updated_at = ? WHERE id = ?').run(now(), id); }
   removePage(id: string): void { this.db.prepare('DELETE FROM pages WHERE id = ?').run(id); }
@@ -352,7 +505,10 @@ You are ready—turn this guide into your own first note, or keep it nearby as a
       return pageIds;
     })();
   }
-  toggleFavorite(id: string): void { this.db.prepare('UPDATE pages SET is_favorite = CASE is_favorite WHEN 0 THEN 1 ELSE 0 END, updated_at = ? WHERE id = ?').run(now(), id); }
+  toggleFavorite(id: string): void {
+    if ((this.db.prepare('SELECT is_encrypted FROM pages WHERE id = ?').get(id) as { is_encrypted?: number } | undefined)?.is_encrypted) throw new Error('Private pages are not shown in Favorites');
+    this.db.prepare('UPDATE pages SET is_favorite = CASE is_favorite WHEN 0 THEN 1 ELSE 0 END, updated_at = ? WHERE id = ?').run(now(), id);
+  }
   movePage(id: string, sectionId: string, position: number): void {
     this.db.transaction(() => {
       const existing = this.db.prepare('SELECT section_id FROM pages WHERE id = ?').get(id) as { section_id: string } | undefined;
@@ -400,12 +556,40 @@ You are ready—turn this guide into your own first note, or keep it nearby as a
       snippet(pages_fts, 2, '<mark>', '</mark>', ' … ', 18) excerpt, p.updated_at
       FROM pages_fts JOIN pages p ON p.id = pages_fts.page_id
       JOIN sections s ON s.id = p.section_id JOIN notebooks n ON n.id = s.notebook_id
-      WHERE pages_fts MATCH ? AND p.is_deleted = 0 ORDER BY rank LIMIT 50`).all(terms) as Row[];
+      WHERE pages_fts MATCH ? AND p.is_deleted = 0 AND p.is_encrypted = 0 ORDER BY rank LIMIT 50`).all(terms) as Row[];
+    const visible = rows.map((r) => ({ id: String(r.id), title: String(r.title), notebook: String(r.notebook), section: String(r.section), excerpt: String(r.excerpt), updatedAt: String(r.updated_at) }));
+    if (!this.vaultKey) return visible;
+    const tokens = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
+    const privateRows = this.db.prepare(`SELECT p.*, n.name AS notebook, s.name AS section
+      FROM pages p JOIN sections s ON s.id = p.section_id JOIN notebooks n ON n.id = s.notebook_id
+      WHERE p.is_deleted = 0 AND p.is_encrypted = 1 ORDER BY p.updated_at DESC`).all() as Row[];
+    const privateResults = privateRows.flatMap((row): SearchResult[] => {
+      const decrypted = this.revealPage(row);
+      const haystack = `${decrypted.title}\n${decrypted.contentMarkdown}`.toLocaleLowerCase();
+      if (!tokens.every((token) => haystack.includes(token))) return [];
+      const compact = decrypted.contentMarkdown.replace(/\s+/g, ' ').trim();
+      return [{ id: decrypted.id, title: decrypted.title, notebook: String(row.notebook), section: String(row.section), excerpt: escapeHtml(compact.slice(0, 180)), updatedAt: decrypted.updatedAt }];
+    });
+    return [...privateResults, ...visible].slice(0, 50);
+  }
+  fullSearchForMcp(query: string): SearchResult[] {
+    const terms = query.trim().split(/\s+/).filter(Boolean).slice(0, 8).map((t) => `"${t.replaceAll('"', '""')}"*`).join(' AND ');
+    if (!terms) return [];
+    const rows = this.db.prepare(`SELECT p.id, p.title, n.name notebook, s.name section,
+      snippet(pages_fts, 2, '<mark>', '</mark>', ' … ', 18) excerpt, p.updated_at
+      FROM pages_fts JOIN pages p ON p.id = pages_fts.page_id
+      JOIN sections s ON s.id = p.section_id JOIN notebooks n ON n.id = s.notebook_id
+      WHERE pages_fts MATCH ? AND p.is_deleted = 0 AND p.is_encrypted = 0 ORDER BY rank LIMIT 50`).all(terms) as Row[];
     return rows.map((r) => ({ id: String(r.id), title: String(r.title), notebook: String(r.notebook), section: String(r.section), excerpt: String(r.excerpt), updatedAt: String(r.updated_at) }));
   }
   quickSearch(query: string): PageSummary[] {
     const q = `%${query.trim().replaceAll('%', '\\%').replaceAll('_', '\\_')}%`;
-    return (this.db.prepare(`SELECT * FROM pages WHERE is_deleted = 0 AND title LIKE ? ESCAPE '\\' ORDER BY CASE WHEN title LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END, last_opened_at DESC LIMIT 20`).all(q, `${query.trim()}%`) as Row[]).map(summary);
+    const visible = (this.db.prepare(`SELECT * FROM pages WHERE is_deleted = 0 AND is_encrypted = 0 AND title LIKE ? ESCAPE '\\' ORDER BY CASE WHEN title LIKE ? ESCAPE '\\' THEN 0 ELSE 1 END, last_opened_at DESC LIMIT 20`).all(q, `${query.trim()}%`) as Row[]).map(summary);
+    if (!this.vaultKey) return visible;
+    const needle = query.trim().toLocaleLowerCase();
+    const privateMatches = (this.db.prepare('SELECT * FROM pages WHERE is_deleted = 0 AND is_encrypted = 1 ORDER BY last_opened_at DESC').all() as Row[])
+      .map((row) => this.revealSummary(row)).filter((item) => item.title.toLocaleLowerCase().includes(needle));
+    return [...privateMatches, ...visible].slice(0, 20);
   }
 
   rememberFile(path: string, filename: string, viewMode: MarkdownViewMode): void {

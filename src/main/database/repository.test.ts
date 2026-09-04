@@ -26,7 +26,7 @@ describe('NotesRepository', () => {
     expect(navigation.notebooks[0]?.sections[0]?.pages[0]?.title).toBe('Welcome to Noteleaf');
     expect(repository!.getPage(navigation.notebooks[0].sections[0].pages[0].id).contentMarkdown).toContain('Essential shortcuts');
     const migration = repository!.db.prepare('SELECT MAX(version) AS version FROM schema_migrations').get() as { version: number };
-    expect(migration.version).toBe(5);
+    expect(migration.version).toBe(6);
   });
 
   it('supports notebook, section, and page CRUD with autosave content', () => {
@@ -119,6 +119,58 @@ describe('NotesRepository', () => {
     expect(repository!.navigation().notebooks[0].sections[0].pages.some((item) => item.id === child.id)).toBe(false);
     expect(repository!.navigation().recent.some((item) => item.id === child.id)).toBe(false);
     expect(repository!.getPage(child.id).title).toBe('Inline child');
+  });
+
+  it('encrypts private page trees at rest and unlocks them only for the current session', async () => {
+    const section = repository!.navigation().notebooks[0].sections[0];
+    const parent = repository!.createPage(section.id, 'Accounts vault');
+    repository!.savePage(parent.id, { title: 'Accounts vault', contentHtml: '<p>top-secret-token</p>', contentMarkdown: 'top-secret-token' });
+    const child = repository!.createPage(section.id, 'Recovery codes', { sidebarVisible: false, parentPageId: parent.id });
+    repository!.savePage(child.id, { title: 'Recovery codes', contentHtml: '<p>child-secret</p>', contentMarkdown: 'child-secret' });
+
+    await repository!.setupVault('correct horse battery staple');
+    expect(repository!.encryptPageTree(parent.id)).toEqual(expect.arrayContaining([parent.id, child.id]));
+    const stored = repository!.db.prepare('SELECT title, content_html, content_markdown, encrypted_payload FROM pages WHERE id = ?').get(parent.id) as Record<string, string>;
+    expect(stored).toMatchObject({ title: 'Locked page', content_html: '<p></p>', content_markdown: '' });
+    expect(stored.encrypted_payload).not.toContain('Accounts vault');
+    expect(stored.encrypted_payload).not.toContain('top-secret-token');
+    expect(repository!.fullSearchForMcp('top-secret-token')).toEqual([]);
+    expect(repository!.fullSearch('top-secret-token')).toEqual(expect.arrayContaining([expect.objectContaining({ id: parent.id })]));
+    expect(repository!.mcpPages(section.id).some((page) => page.id === parent.id)).toBe(false);
+    expect(repository!.getPage(parent.id)).toMatchObject({ title: 'Accounts vault', contentMarkdown: 'top-secret-token', isEncrypted: true, isLocked: false });
+
+    repository!.lockVault();
+    expect(repository!.fullSearch('top-secret-token')).toEqual([]);
+    expect(repository!.navigation().notebooks[0].sections[0].pages.find((page) => page.id === parent.id)).toMatchObject({ title: 'Locked page', isEncrypted: true, isLocked: true });
+    expect(repository!.getPage(parent.id)).toMatchObject({ title: 'Locked page', contentMarkdown: '', isLocked: true });
+    await expect(repository!.unlockVault('incorrect password')).rejects.toThrow('Incorrect vault password');
+    await repository!.unlockVault('correct horse battery staple');
+    expect(repository!.getPage(child.id)).toMatchObject({ title: 'Recovery codes', contentMarkdown: 'child-secret', isLocked: false });
+
+    repository!.close();
+    repository = new NotesRepository(join(directory, 'notes.db'));
+    expect(repository!.getPage(parent.id)).toMatchObject({ title: 'Locked page', isLocked: true });
+  });
+
+  it('encrypts new child pages immediately when their parent is private', async () => {
+    const section = repository!.navigation().notebooks[0].sections[0];
+    const parent = repository!.createPage(section.id, 'Private parent');
+    await repository!.setupVault('a-long-test-password');
+    repository!.encryptPageTree(parent.id);
+
+    const child = repository!.createPage(section.id, 'New private child', { sidebarVisible: false, parentPageId: parent.id });
+    expect(child).toMatchObject({ title: 'New private child', isEncrypted: true, isLocked: false });
+    expect(repository!.mcpPageLocation(child.id)).toBeUndefined();
+    expect(repository!.db.prepare('SELECT title, content_markdown, is_encrypted, encrypted_payload FROM pages WHERE id = ?').get(child.id)).toMatchObject({
+      title: 'Locked page',
+      content_markdown: '',
+      is_encrypted: 1,
+      encrypted_payload: expect.any(String),
+    });
+
+    repository!.lockVault();
+    expect(repository!.getPage(child.id)).toMatchObject({ title: 'Locked page', isLocked: true });
+    expect(() => repository!.createPage(section.id, 'Blocked child', { sidebarVisible: false, parentPageId: parent.id })).toThrow('Unlock private pages first');
   });
 
   it('stores external Markdown files as movable sidebar shortcuts without copying content', () => {

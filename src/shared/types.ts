@@ -76,6 +76,8 @@ export interface PageSummary {
   isSidebarVisible: boolean;
   parentPageId: Id | null;
   externalPath: string | null;
+  isEncrypted: boolean;
+  isLocked: boolean;
 }
 
 export interface SectionTree {
@@ -138,6 +140,12 @@ export interface SearchResult {
   updatedAt: string;
 }
 
+export interface VaultStatus {
+  configured: boolean;
+  unlocked: boolean;
+  encryptedPageCount: number;
+}
+
 export interface AppSettings {
   theme: ThemePreference;
   editorFontSize: number;
@@ -182,6 +190,14 @@ export interface NotesApi {
     emptyTrash(): Promise<Id[]>;
     toggleFavorite(id: Id): Promise<void>;
     move(id: Id, sectionId: Id, position: number): Promise<void>;
+  };
+  vault: {
+    status(): Promise<VaultStatus>;
+    setupAndEncrypt(pageId: Id, password: string): Promise<VaultStatus>;
+    unlock(password: string): Promise<VaultStatus>;
+    lock(): Promise<VaultStatus>;
+    encryptPage(pageId: Id): Promise<VaultStatus>;
+    decryptPage(pageId: Id): Promise<VaultStatus>;
   };
   search: {
     full(query: string): Promise<SearchResult[]>;

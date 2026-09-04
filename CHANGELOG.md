@@ -6,6 +6,8 @@ All notable changes to Noteleaf are documented here.
 
 - Adds one-switch ChatGPT Desktop and local Codex client access by safely managing only Noteleaf's block in the shared local MCP configuration.
 - Keeps ChatGPT web as a separate, optional Secure MCP Tunnel workflow because hosted chats cannot read a computer's local MCP configuration.
+- Remembers collapsed and expanded notebooks and sections across app restarts.
+- Adds password-based private pages with encrypted titles and content, recursive child-page protection, a session-only unlock flow, locked sidebar placeholders, and complete exclusion from MCP/AI access.
 
 ## 1.2.1 — 2026-09-03
 

@@ -76,6 +76,7 @@ This account authorization cannot be silently performed by a desktop application
 
 - `update_page` requires the exact `updatedAt` revision returned by the latest `get_page` call. If the page changed meanwhile, Noteleaf rejects the update and asks the client to read it again.
 - Text protected with the editor's shield button is removed from `get_page` responses and cannot be discovered through `search_notes`. A page containing protected text rejects AI content changes so hidden content cannot be accidentally overwritten; title-only changes remain available.
+- Private encrypted pages are excluded at the database-query boundary from notebook totals, section counts, page listings, search, reads, and writes—even while the user has unlocked the vault in the Noteleaf window.
 - Append and prepend modes keep existing Markdown; replace mode replaces the complete body.
 - Linked external Markdown pages are read from and written to their original file instead of creating a disconnected copy.
 - When the Noteleaf window regains focus, clean open pages refresh from changes made by another local MCP process. A page with unsaved local typing is not automatically reloaded.
@@ -91,4 +92,4 @@ This account authorization cannot be silently performed by a desktop application
 
 ## Privacy notes
 
-Noteleaf itself remains local-first and does not send content anywhere. Once an MCP client invokes a read tool, the selected AI provider receives that returned content under the provider's own data handling terms. Text marked as protected is redacted before MCP responses leave Noteleaf, but it remains stored locally in the database and backups. Connect only clients and tunnel providers you trust, keep the endpoint private, and review write approvals carefully.
+Noteleaf itself remains local-first and does not send content anywhere. Once an MCP client invokes a read tool, the selected AI provider receives that returned content under the provider's own data handling terms. Text marked as protected is redacted before MCP responses leave Noteleaf, but it remains stored locally in the database and backups. Private encrypted pages are never exposed through MCP. Connect only clients and tunnel providers you trust, keep the endpoint private, and review write approvals carefully.

@@ -98,6 +98,20 @@ describe('NoteleafMcpData', () => {
     expect(repository.readPage(page.id).contentHtml).toContain('data-protected-text="true"');
   });
 
+  it('completely excludes encrypted pages even while the local vault is unlocked', async () => {
+    const section = repository.navigation().notebooks[0].sections[0];
+    const privatePage = repository.createPage(section.id, 'Infrastructure credentials');
+    repository.savePage(privatePage.id, { title: 'Infrastructure credentials', contentHtml: '<p>private-api-key</p>', contentMarkdown: 'private-api-key' });
+    await repository.setupVault('correct horse battery staple');
+    repository.encryptPageTree(privatePage.id);
+
+    expect(data.listPages(section.id).pages.some((page) => page.id === privatePage.id)).toBe(false);
+    expect(data.search('private-api-key').results).toEqual([]);
+    expect(data.search('Infrastructure credentials').results).toEqual([]);
+    await expect(data.getPage(privatePage.id)).rejects.toThrow('Page not found');
+    expect(data.workspaceOverview().totals.pages).toBe(repository.mcpNotebooks().reduce((total, notebook) => total + notebook.pageCount, 0));
+  });
+
   it('reads and changes daily tasks', () => {
     const task = data.createTask('Publish MCP build', '2026-08-28');
     expect(data.listTasks('2026-08-28').tasks).toEqual([expect.objectContaining({ id: task.id, status: 'todo' })]);

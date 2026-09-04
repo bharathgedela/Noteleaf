@@ -78,8 +78,8 @@ export class NoteleafMcpData {
     const cleaned = cleanText(query, 'Search query', 300);
     const tokens = searchTokens(cleaned);
     const cappedLimit = Math.min(Math.max(limit, 1), 50);
-    const results = this.repository.fullSearch(cleaned).flatMap((result) => {
-      const page = this.repository.readPage(result.id);
+    const results = this.repository.fullSearchForMcp(cleaned).flatMap((result) => {
+      const page = this.repository.readPageForMcp(result.id);
       const view = mcpContentView(page.contentHtml, page.contentMarkdown);
       if (!view.protectedTextRedacted) return [result];
 
@@ -97,7 +97,7 @@ export class NoteleafMcpData {
   async getPage(pageId: string) {
     const location = this.repository.mcpPageLocation(pageId);
     if (!location || location.isDeleted) throw new Error('Page not found');
-    const page = this.repository.readPage(pageId);
+    const page = this.repository.readPageForMcp(pageId);
     let contentMarkdown = page.contentMarkdown;
     let updatedAt = page.updatedAt;
     let protectedTextRedacted = false;
@@ -147,7 +147,7 @@ export class NoteleafMcpData {
     const title = input.title === undefined ? existing.title : cleanText(input.title, 'Title', 500);
     const mode = input.mode ?? 'replace';
     const supplied = input.contentMarkdown === undefined ? undefined : cleanMarkdown(input.contentMarkdown);
-    const storedPage = this.repository.readPage(existing.id);
+    const storedPage = this.repository.readPageForMcp(existing.id);
     const protectedView = mcpContentView(storedPage.contentHtml, storedPage.contentMarkdown);
     if (!existing.linkedFilePath && protectedView.protectedTextRedacted && supplied !== undefined) {
       throw new Error('This page contains protected text. Unprotect it in Noteleaf before allowing AI content updates.');

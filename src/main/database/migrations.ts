@@ -138,6 +138,38 @@ const migrations: Migration[] = [
       CREATE INDEX pages_external_path ON pages(external_path);
     `,
   },
+  {
+    version: 6,
+    sql: `
+      ALTER TABLE pages ADD COLUMN is_encrypted INTEGER NOT NULL DEFAULT 0;
+      ALTER TABLE pages ADD COLUMN encrypted_payload TEXT;
+      CREATE TABLE vault_metadata (
+        id INTEGER PRIMARY KEY CHECK(id = 1),
+        salt TEXT NOT NULL,
+        verifier TEXT NOT NULL,
+        kdf_version INTEGER NOT NULL DEFAULT 1,
+        created_at TEXT NOT NULL
+      );
+      DROP TRIGGER pages_fts_insert;
+      DROP TRIGGER pages_fts_update;
+      DROP TRIGGER pages_fts_delete;
+      DELETE FROM pages_fts;
+      INSERT INTO pages_fts(page_id, title, body)
+        SELECT id, title, content_markdown FROM pages WHERE is_deleted = 0 AND is_encrypted = 0;
+      CREATE TRIGGER pages_fts_insert AFTER INSERT ON pages WHEN new.is_deleted = 0 AND new.is_encrypted = 0 BEGIN
+        INSERT INTO pages_fts(page_id, title, body) VALUES (new.id, new.title, new.content_markdown);
+      END;
+      CREATE TRIGGER pages_fts_update AFTER UPDATE ON pages BEGIN
+        DELETE FROM pages_fts WHERE page_id = old.id;
+        INSERT INTO pages_fts(page_id, title, body)
+          SELECT new.id, new.title, new.content_markdown WHERE new.is_deleted = 0 AND new.is_encrypted = 0;
+      END;
+      CREATE TRIGGER pages_fts_delete AFTER DELETE ON pages BEGIN
+        DELETE FROM pages_fts WHERE page_id = old.id;
+      END;
+      CREATE INDEX pages_encrypted ON pages(is_encrypted, is_deleted);
+    `,
+  },
 ];
 
 export function runMigrations(db: Database.Database): void {

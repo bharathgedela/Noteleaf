@@ -24,8 +24,9 @@ See [CHANGELOG.md](CHANGELOG.md) for release notes.
 - Restore integrity-checked `.notesbackup` archives after an automatic safety backup.
 - Turn on **AI access** once to automatically configure Claude Desktop, ChatGPT Desktop, and local Codex clients. Connected clients can search, read, and—when explicitly enabled—update notes and daily tasks without copy-paste or per-question scripts. ChatGPT on the web can use the same tools through OpenAI's optional private-tunnel flow.
 - Select important text and use the shield button to protect it from accidental edits while keeping it selectable and copyable. Protected text is also omitted from MCP reads and search results. This is not encryption or a substitute for a password manager.
+- Right-click an internal page to encrypt its title and contents with a session-locked password vault. Locked private pages show only a placeholder and are excluded completely from AI access.
 
-See [docs/mcp.md](docs/mcp.md) for MCP tools, the one-switch desktop setup, the optional ChatGPT web connection, and the security model.
+See [docs/private-pages.md](docs/private-pages.md) for the encryption model and limitations, and [docs/mcp.md](docs/mcp.md) for MCP tools, the one-switch desktop setup, the optional ChatGPT web connection, and the AI security model.
 
 ## Keyboard shortcuts
 

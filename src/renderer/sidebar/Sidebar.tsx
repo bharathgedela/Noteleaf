@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { ChevronDown, ChevronRight, ChevronsLeft, FileSymlink, FileText, Folder, GripVertical, MoreHorizontal, Plus, Search, Star, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, ChevronsLeft, FileSymlink, FileText, Folder, GripVertical, LockKeyhole, MoreHorizontal, Plus, Search, Star, Trash2 } from 'lucide-react';
 import type { NavigationData, NotebookTree, PageSummary, SectionTree } from '../../shared/types';
 import { BrandLogo } from '../components/BrandLogo';
 import { shortcut } from '../platform';
 import { assignNotebookColors, NOTEBOOK_COLORS } from './notebook-colors';
+import { COLLAPSED_SIDEBAR_ITEMS_KEY, parseCollapsedSidebarItems, serializeCollapsedSidebarItems } from './sidebar-state';
 
 interface SidebarProps {
   data: NavigationData;
@@ -42,18 +43,25 @@ function insertionPosition(ids: string[], sourceId: string, targetIndex: number,
 function PageRow({ page, active, onOpen, onMenu, siblings, index, drop, onDropChange, onMove }: { page: PageSummary; active: boolean; onOpen: () => void; onMenu: (x: number, y: number) => void; siblings?: PageSummary[]; index?: number; drop?: DropIndicator; onDropChange?: (drop?: DropIndicator) => void; onMove?: (pageId: string, sectionId: string, position: number) => void }) {
   const edge = drop?.kind === 'page' && drop.id === page.id ? drop.edge : undefined;
   return <button data-nav-id={page.id} className={`page-row ${active ? 'active' : ''} ${edge ? `drop-${edge}` : ''}`} onClick={onOpen} onContextMenu={(e) => { e.preventDefault(); onMenu(e.clientX, e.clientY); }} onDragOver={(event) => { if (!siblings || !event.dataTransfer.types.includes('text/notes-page')) return; event.preventDefault(); event.stopPropagation(); onDropChange?.({ kind: 'page', id: page.id, edge: edgeFor(event) }); }} onDragLeave={(event) => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) onDropChange?.(); }} onDrop={(event) => { const pageId = event.dataTransfer.getData('text/notes-page'); if (!pageId || !siblings || index === undefined) return; event.preventDefault(); event.stopPropagation(); const targetEdge = edgeFor(event); onDropChange?.(); onMove?.(pageId, page.sectionId, insertionPosition(siblings.map((item) => item.id), pageId, index, targetEdge)); }}>
-    <span className="drag-handle" draggable title="Drag to reorder" onClick={(event) => event.stopPropagation()} onDragStart={(event) => { event.stopPropagation(); event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/notes-page', page.id); }} onDragEnd={() => onDropChange?.()}><GripVertical size={12} /></span>{page.externalPath ? <FileSymlink size={14} aria-label="Linked Markdown file" /> : <FileText size={14} />}<span title={page.externalPath || undefined}>{page.title}</span>{page.isFavorite && <Star size={12} fill="currentColor" />}
+    <span className="drag-handle" draggable title="Drag to reorder" onClick={(event) => event.stopPropagation()} onDragStart={(event) => { event.stopPropagation(); event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/notes-page', page.id); }} onDragEnd={() => onDropChange?.()}><GripVertical size={12} /></span>{page.isEncrypted ? <LockKeyhole className="private-page-icon" size={14} aria-label="Private encrypted page" /> : page.externalPath ? <FileSymlink size={14} aria-label="Linked Markdown file" /> : <FileText size={14} />}<span title={page.externalPath || undefined}>{page.title}</span>{page.isFavorite && <Star size={12} fill="currentColor" />}
   </button>;
 }
 
 export function Sidebar(props: SidebarProps) {
-  const [collapsed, setCollapsed] = useState<Set<string>>(() => new Set());
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => {
+    try { return parseCollapsedSidebarItems(window.localStorage.getItem(COLLAPSED_SIDEBAR_ITEMS_KEY)); }
+    catch { return new Set(); }
+  });
   const [showTrash, setShowTrash] = useState(false);
   const [recentCollapsed, setRecentCollapsed] = useState(true);
   const [drop, setDrop] = useState<DropIndicator>();
   const notebookColors = useMemo(() => assignNotebookColors(props.data.notebooks.map((notebook) => notebook.id)), [props.data.notebooks]);
   const toggle = (id: string) => setCollapsed((before) => { const next = new Set(before); if (next.has(id)) next.delete(id); else next.add(id); return next; });
   const expand = (id: string) => setCollapsed((before) => { const next = new Set(before); next.delete(id); return next; });
+  useEffect(() => {
+    try { window.localStorage.setItem(COLLAPSED_SIDEBAR_ITEMS_KEY, serializeCollapsedSidebarItems(collapsed)); }
+    catch { /* Sidebar state persistence is best-effort. */ }
+  }, [collapsed]);
   useEffect(() => {
     if (!props.activePageId) return;
     const location = props.data.notebooks.flatMap((notebook) => notebook.sections.map((section) => ({ notebook, section }))).find(({ section }) => section.pages.some((page) => page.id === props.activePageId));

@@ -11,6 +11,7 @@ const CHANNELS = [
   'sections:create', 'sections:rename', 'sections:remove', 'sections:move', 'pages:create', 'pages:get',
   'pages:save', 'pages:rename', 'pages:trash', 'pages:restore', 'pages:remove', 'pages:empty-trash',
   'pages:favorite', 'pages:move', 'search:full', 'search:quick', 'files:open',
+  'vault:status', 'vault:setup-encrypt', 'vault:unlock', 'vault:lock', 'vault:encrypt-page', 'vault:decrypt-page',
   'tasks:list', 'tasks:create', 'tasks:update', 'tasks:remove',
   'files:open-linked', 'files:open-folder', 'files:save', 'files:save-as', 'files:draft', 'files:clear-draft', 'files:import', 'files:link', 'files:export', 'files:recent',
   'files:attachment', 'settings:get', 'settings:update', 'settings:open-data', 'system:open-external',
@@ -41,6 +42,10 @@ function taskDate(value: unknown): string {
 }
 function taskStatus(value: unknown): TaskStatus {
   if (value !== 'todo' && value !== 'in_progress' && value !== 'done') throw new Error('Invalid task status');
+  return value;
+}
+function password(value: unknown): string {
+  if (typeof value !== 'string' || value.length < 10 || value.length > 1024) throw new Error('Vault password must be between 10 and 1,024 characters');
   return value;
 }
 
@@ -75,6 +80,17 @@ export function registerIpc(
   ipcMain.handle('pages:empty-trash', () => repository.emptyTrash());
   ipcMain.handle('pages:favorite', (_event, rawId) => repository.toggleFavorite(id(rawId)));
   ipcMain.handle('pages:move', (_event, rawId, sectionId, position) => repository.movePage(id(rawId), id(sectionId), Math.max(0, Number(position) || 0)));
+  ipcMain.handle('vault:status', () => repository.vaultStatus());
+  ipcMain.handle('vault:setup-encrypt', async (_event, rawId, rawPassword) => {
+    repository.assertPageTreeEncryptable(id(rawId));
+    await repository.setupVault(password(rawPassword));
+    repository.encryptPageTree(id(rawId));
+    return repository.vaultStatus();
+  });
+  ipcMain.handle('vault:unlock', async (_event, rawPassword) => { await repository.unlockVault(password(rawPassword)); return repository.vaultStatus(); });
+  ipcMain.handle('vault:lock', () => { repository.lockVault(); return repository.vaultStatus(); });
+  ipcMain.handle('vault:encrypt-page', (_event, rawId) => { repository.encryptPageTree(id(rawId)); return repository.vaultStatus(); });
+  ipcMain.handle('vault:decrypt-page', (_event, rawId) => { repository.decryptPageTree(id(rawId)); return repository.vaultStatus(); });
   ipcMain.handle('search:full', (_event, query) => repository.fullSearch(typeof query === 'string' ? query.slice(0, 300) : ''));
   ipcMain.handle('search:quick', (_event, query) => repository.quickSearch(typeof query === 'string' ? query.slice(0, 300) : ''));
   ipcMain.handle('tasks:list', (_event, date) => repository.tasksForDate(taskDate(date)));
@@ -96,7 +112,11 @@ export function registerIpc(
   ipcMain.handle('files:link', (_event, sectionId, path?: string) => files.linkMarkdown(id(sectionId), path ? text(path, 'Path', 32767) : undefined));
   ipcMain.handle('files:export', (_event, pageId) => files.exportPage(repository.getPage(id(pageId))));
   ipcMain.handle('files:recent', () => repository.recentFiles());
-  ipcMain.handle('files:attachment', (_event, pageId, dataUrl) => files.saveAttachment(id(pageId), source(dataUrl)));
+  ipcMain.handle('files:attachment', (_event, pageId, dataUrl) => {
+    const page = id(pageId);
+    if (repository.isPageEncrypted(page)) throw new Error('Images cannot be added to encrypted pages yet');
+    return files.saveAttachment(page, source(dataUrl));
+  });
   ipcMain.handle('settings:get', () => repository.getSettings());
   ipcMain.handle('settings:update', async (_event, patch: Partial<AppSettings>) => {
     repository.updateSettings(patch);

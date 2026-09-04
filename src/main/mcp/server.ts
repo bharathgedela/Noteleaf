@@ -62,7 +62,7 @@ export function createNoteleafMcpServer(options: {
 
   server.registerTool('search_notes', {
     title: 'Search Noteleaf',
-    description: 'Full-text searches titles and AI-visible Markdown across all active Noteleaf pages. Protected text is never returned or matched.',
+    description: 'Full-text searches titles and AI-visible Markdown across active Noteleaf pages. Encrypted pages are excluded completely, and protected text is never returned or matched.',
     inputSchema: {
       query: z.string().min(1).max(300),
       limit: z.number().int().min(1).max(50).optional().default(20),

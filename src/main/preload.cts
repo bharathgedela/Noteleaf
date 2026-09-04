@@ -27,6 +27,14 @@ const api: NotesApi = {
     toggleFavorite: (id) => invoke('pages:favorite', id),
     move: (id, sectionId, position) => invoke('pages:move', id, sectionId, position),
   },
+  vault: {
+    status: () => invoke('vault:status'),
+    setupAndEncrypt: (pageId, password) => invoke('vault:setup-encrypt', pageId, password),
+    unlock: (password) => invoke('vault:unlock', password),
+    lock: () => invoke('vault:lock'),
+    encryptPage: (pageId) => invoke('vault:encrypt-page', pageId),
+    decryptPage: (pageId) => invoke('vault:decrypt-page', pageId),
+  },
   search: { full: (query) => invoke('search:full', query), quick: (query) => invoke('search:quick', query) },
   tasks: {
     list: (taskDate) => invoke('tasks:list', taskDate),

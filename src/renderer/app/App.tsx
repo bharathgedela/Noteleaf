@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowLeft, ArrowRight, BookPlus, Bot, CheckCircle2, ChevronDown, ChevronRight, ChevronsRight, ClipboardList, Clock3, CloudUpload, FilePlus2, FileText, Folder, FolderOpen, FolderTree, Home, Keyboard, Lightbulb, List, LoaderCircle, Maximize2, MessageSquareText, Minimize2, Plus, RefreshCw, Rocket, Settings as SettingsIcon, ShieldCheck, Sparkles, X } from 'lucide-react';
-import type { AiAccessStatus, AiProviderState, AppSettings, BackupStatus, ExternalDocument, MarkdownFolderEntry, MarkdownFolderTree, NavigationData, NotebookTree, Page, PageSummary, SaveState, SearchResult, SectionTree } from '../../shared/types';
+import { ArrowLeft, ArrowRight, BookPlus, Bot, CheckCircle2, ChevronDown, ChevronRight, ChevronsRight, ClipboardList, Clock3, CloudUpload, FilePlus2, FileText, Folder, FolderOpen, FolderTree, Home, Keyboard, Lightbulb, List, LoaderCircle, LockKeyhole, Maximize2, MessageSquareText, Minimize2, Plus, RefreshCw, Rocket, Settings as SettingsIcon, ShieldCheck, Sparkles, UnlockKeyhole, X } from 'lucide-react';
+import type { AiAccessStatus, AiProviderState, AppSettings, BackupStatus, ExternalDocument, MarkdownFolderEntry, MarkdownFolderTree, NavigationData, NotebookTree, Page, PageSummary, SaveState, SearchResult, SectionTree, VaultStatus } from '../../shared/types';
 import { Sidebar } from '../sidebar/Sidebar';
 import { RichEditor } from '../editor/RichEditor';
 import { MarkdownPreview } from '../markdown/MarkdownPreview';
@@ -14,6 +14,8 @@ type Tab = { kind: 'internal'; key: string; pageId: string; title: string; histo
 type StructureMenu = { kind: 'notebook'; item: NotebookTree; x: number; y: number } | { kind: 'section'; item: SectionTree; x: number; y: number };
 type RenameDialogState = { kind: 'notebook' | 'section'; id: string; name: string };
 type ToastState = { id: number; message: string; tone: 'success' | 'info' | 'error' };
+type VaultDialogState = { mode: 'setup' | 'unlock' | 'unlock-and-encrypt'; pageId?: string };
+type PageFlushRequest = { pageId: string; handled: boolean; resolve: () => void; reject: (error: unknown) => void };
 
 function storedWidth(key: string, fallback: number): number {
   const value = Number(window.localStorage.getItem(key));
@@ -50,9 +52,10 @@ function InternalDocument({
   onTitle,
   onSaved,
   onOpenPage,
-  onStructureChange
+  onStructureChange,
+  onUnlock,
 }: {
-  pageId: string; settings: AppSettings; libraryRevision: number; breadcrumb?: { notebookId: string; notebook: string; sectionId: string; section: string }; onRevealBreadcrumb: (id: string) => void; onTitle: (title: string) => void; onSaved: () => void; onOpenPage: (pageId: string) => void; onStructureChange: () => void
+  pageId: string; settings: AppSettings; libraryRevision: number; breadcrumb?: { notebookId: string; notebook: string; sectionId: string; section: string }; onRevealBreadcrumb: (id: string) => void; onTitle: (title: string) => void; onSaved: () => void; onOpenPage: (pageId: string) => void; onStructureChange: () => void; onUnlock: () => void
 }) {
   const [page, setPage] = useState<Page | null>(null);
   const [title, setTitle] = useState('');
@@ -84,7 +87,22 @@ function InternalDocument({
     }, 750);
     return () => window.clearTimeout(timer);
   }, [page, title, content, onTitle, onSaved]);
+  useEffect(() => {
+    const listener = (event: Event) => {
+      const request = (event as CustomEvent<PageFlushRequest>).detail;
+      if (!request || request.pageId !== pageId) return;
+      request.handled = true;
+      const current = latest.current;
+      if (!dirty.current || !current.page || current.page.isLocked) { request.resolve(); return; }
+      window.notes.pages.save(current.page.id, { title: current.title.trim() || 'Untitled', contentHtml: current.content.html, contentMarkdown: current.content.markdown })
+        .then((saved) => { setPage(saved); dirty.current = false; setStatus('saved'); onTitle(saved.title); onSaved(); request.resolve(); })
+        .catch((error) => { setStatus('error'); request.reject(error); });
+    };
+    window.addEventListener('noteleaf-flush-page', listener);
+    return () => window.removeEventListener('noteleaf-flush-page', listener);
+  }, [pageId, onSaved, onTitle]);
   if (!page) return <div className="document-loading">Loading note…</div>;
+  if (page.isLocked) return <main className="document-view private-page-locked"><section><span><LockKeyhole size={30} /></span><h1>Page locked</h1><p>This page’s title and contents are encrypted. Unlock your private pages to view or edit it.</p><button onClick={onUnlock}><UnlockKeyhole size={15} />Unlock private pages</button><small>Private pages are never available to AI access.</small></section></main>;
   const changed = () => { dirty.current = true; };
   return <main className="document-view">
     <div className="document-column">
@@ -299,6 +317,35 @@ function CreateDialog({ title, label, initialValue, submitLabel = 'Create and op
   </form></div>;
 }
 
+function VaultDialog({ state, onCancel, onSubmit }: { state: VaultDialogState; onCancel: () => void; onSubmit: (password: string) => Promise<void> }) {
+  const creating = state.mode === 'setup';
+  const [password, setPassword] = useState('');
+  const [confirmation, setConfirmation] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  useReliableAutofocus(inputRef);
+  const valid = password.length >= 10 && (!creating || password === confirmation);
+  const submit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!valid || busy) return;
+    setBusy(true); setError('');
+    try { await onSubmit(password); }
+    catch (cause) { setError(cause instanceof Error ? cause.message.replace(/^Error invoking remote method '[^']+': Error: /, '') : 'Private pages could not be unlocked.'); setBusy(false); }
+  };
+  return <div className="modal-backdrop create-backdrop" onMouseDown={onCancel}><form className="create-dialog vault-dialog" role="dialog" aria-modal="true" onSubmit={(event) => void submit(event)} onMouseDown={(event) => event.stopPropagation()}>
+    <div className="vault-dialog-icon"><LockKeyhole size={20} /></div>
+    <h2>{creating ? 'Create private-page vault' : 'Unlock private pages'}</h2>
+    <p>{creating ? 'Choose one password for all encrypted pages. Noteleaf cannot recover this password if you forget it.' : 'Enter your vault password. It is kept only in memory until Noteleaf closes or you lock the vault.'}</p>
+    <label htmlFor="vault-password">Vault password</label>
+    <input id="vault-password" ref={inputRef} type="password" autoFocus autoComplete={creating ? 'new-password' : 'current-password'} value={password} onChange={(event) => setPassword(event.target.value)} onKeyDown={(event) => { event.stopPropagation(); if (event.key === 'Escape') onCancel(); }} />
+    {creating && <><label htmlFor="vault-confirmation">Confirm password</label><input id="vault-confirmation" type="password" autoComplete="new-password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} onKeyDown={(event) => event.stopPropagation()} /></>}
+    <small>{creating && confirmation && password !== confirmation ? 'Passwords do not match.' : 'Use at least 10 characters. The password is never stored.'}</small>
+    {error && <p className="vault-dialog-error" role="alert">{error}</p>}
+    <div><button type="button" onClick={onCancel}>Cancel</button><button type="submit" className="primary" disabled={!valid || busy}>{busy ? (creating ? 'Encrypting…' : 'Unlocking…') : creating ? 'Create vault and encrypt' : 'Unlock'}</button></div>
+  </form></div>;
+}
+
 function LinkMarkdownDialog({ document, navigation, onCancel, onLink }: { document: ExternalDocument; navigation: NavigationData; onCancel: () => void; onLink: (sectionId: string) => Promise<void> }) {
   const sections = navigation.notebooks.flatMap((notebook) => notebook.sections.map((section) => ({ notebook, section })));
   const [sectionId, setSectionId] = useState(sections[0]?.section.id || '');
@@ -343,6 +390,8 @@ export function App() {
   const [createDialog, setCreateDialog] = useState<{ kind: 'notebook' } | { kind: 'section'; notebookId: string }>();
   const [renameDialog, setRenameDialog] = useState<RenameDialogState>();
   const [linkDialog, setLinkDialog] = useState<ExternalDocument>();
+  const [vaultDialog, setVaultDialog] = useState<VaultDialogState>();
+  const [vaultStatus, setVaultStatus] = useState<VaultStatus>();
   const [menu, setMenu] = useState<{ page: PageSummary; x: number; y: number }>();
   const [structureMenu, setStructureMenu] = useState<StructureMenu>();
   const refresh = useCallback(async () => setNavigation(await window.notes.navigation.list()), []);
@@ -351,7 +400,7 @@ export function App() {
     setTabs((before) => { const found = before.findIndex((tab) => tab.key === key); if (found >= 0) { const current = before[found]; if (current.kind === 'external' && current.document.isDirty) return before; return before.map((tab) => tab.key === key ? { kind: 'external', key, document } : tab); } return [...before, { kind: 'external', key, document }]; });
     setActiveKey(key); setWorkspaceMode('documents');
   }, []);
-  useEffect(() => { void Promise.all([refresh(), window.notes.settings.get().then(setSettings)]); }, [refresh]);
+  useEffect(() => { void Promise.all([refresh(), window.notes.settings.get().then(setSettings), window.notes.vault.status().then(setVaultStatus)]); }, [refresh]);
   useEffect(() => window.notes.events.onLibraryChanged(() => {
     setLibraryRevision((revision) => revision + 1);
     void refresh();
@@ -566,8 +615,58 @@ export function App() {
     setTabs((before) => before.map((tab) => tab.key === key && tab.kind === 'external' ? { ...tab, key: nextKey, document } : tab));
     setActiveKey((current) => current === key ? nextKey : current);
   };
+  const flushPageEdits = (pageId: string): Promise<void> => new Promise((resolve, reject) => {
+    const request: PageFlushRequest = { pageId, handled: false, resolve, reject };
+    window.dispatchEvent(new CustomEvent('noteleaf-flush-page', { detail: request }));
+    if (!request.handled) resolve();
+  });
+  const applyVaultStatus = async (status: VaultStatus) => {
+    setVaultStatus(status); setLibraryRevision((revision) => revision + 1); await refresh();
+  };
+  const encryptPage = async (page: PageSummary) => {
+    try {
+      await flushPageEdits(page.id);
+      const status = vaultStatus ?? await window.notes.vault.status();
+      if (!status.configured) { setVaultDialog({ mode: 'setup', pageId: page.id }); return; }
+      if (!status.unlocked) { setVaultDialog({ mode: 'unlock-and-encrypt', pageId: page.id }); return; }
+      await applyVaultStatus(await window.notes.vault.encryptPage(page.id));
+      notify('Page and its child pages are now encrypted.', 'success');
+    } catch (error) {
+      notify(error instanceof Error ? error.message.replace(/^Error invoking remote method '[^']+': Error: /, '') : 'Page could not be encrypted.', 'error');
+    }
+  };
+  const unlockPrivatePages = (pageId?: string) => setVaultDialog({ mode: 'unlock', pageId });
+  const submitVaultPassword = async (password: string) => {
+    if (!vaultDialog) return;
+    let status: VaultStatus;
+    if (vaultDialog.mode === 'setup') status = await window.notes.vault.setupAndEncrypt(vaultDialog.pageId!, password);
+    else {
+      status = await window.notes.vault.unlock(password);
+      if (vaultDialog.mode === 'unlock-and-encrypt') status = await window.notes.vault.encryptPage(vaultDialog.pageId!);
+    }
+    setVaultDialog(undefined);
+    await applyVaultStatus(status);
+    notify(vaultDialog.mode === 'setup' || vaultDialog.mode === 'unlock-and-encrypt' ? 'Private page encrypted.' : 'Private pages unlocked for this session.', 'success');
+  };
+  const lockPrivatePages = async () => {
+    if (activePageId) await flushPageEdits(activePageId);
+    await applyVaultStatus(await window.notes.vault.lock());
+    notify('Private pages locked.', 'info');
+  };
   const handlePageMenu = async (action: string) => {
     if (!menu) return; const page = menu.page; setMenu(undefined);
+    if (action === 'encrypt') { await encryptPage(page); return; }
+    if (action === 'unlock') { unlockPrivatePages(page.id); return; }
+    if (action === 'lock-vault') { await lockPrivatePages(); return; }
+    if (action === 'decrypt') {
+      if (!window.confirm('Remove encryption from this page and its child pages? Their titles and contents will be stored as regular Noteleaf data.')) return;
+      try {
+        await flushPageEdits(page.id);
+        await applyVaultStatus(await window.notes.vault.decryptPage(page.id));
+        notify('Encryption removed from this page.', 'info');
+      } catch (error) { notify(error instanceof Error ? error.message.replace(/^Error invoking remote method '[^']+': Error: /, '') : 'Encryption could not be removed.', 'error'); }
+      return;
+    }
     if (action === 'favorite') await window.notes.pages.toggleFavorite(page.id);
     if (action === 'export') await window.notes.files.exportPage(page.id);
     if (action === 'trash') await window.notes.pages.trash(page.id);
@@ -668,7 +767,7 @@ export function App() {
           <article className="home-card shortcuts-card"><header><span><Keyboard size={16} /></span><div><strong>Shortcuts</strong><small>Move faster around Noteleaf</small></div></header><dl><div><dt>Search</dt><dd>{shortcut('F')}</dd></div><div><dt>Tasks / notes</dt><dd>{shortcut('T')}</dd></div><div><dt>Switch tabs</dt><dd>{shortcut('Tab')}</dd></div><div><dt>Focus mode</dt><dd>{shortcut('Shift+F')}</dd></div></dl></article>
         </section>
       </main>}
-      {workspaceMode === 'documents' && active?.kind === 'internal' && <InternalDocument key={active.pageId} pageId={active.pageId} settings={settings} libraryRevision={libraryRevision} breadcrumb={activeLocation} onRevealBreadcrumb={revealSidebarItem} onTitle={(title) => updateTabTitle(active.key, title)} onSaved={refresh} onOpenPage={(pageId) => void navigateInActiveTab(pageId)} onStructureChange={() => void refresh()} />}
+      {workspaceMode === 'documents' && active?.kind === 'internal' && <InternalDocument key={active.pageId} pageId={active.pageId} settings={settings} libraryRevision={libraryRevision} breadcrumb={activeLocation} onRevealBreadcrumb={revealSidebarItem} onTitle={(title) => updateTabTitle(active.key, title)} onSaved={refresh} onOpenPage={(pageId) => void navigateInActiveTab(pageId)} onStructureChange={() => void refresh()} onUnlock={() => unlockPrivatePages(active.pageId)} />}
       {workspaceMode === 'documents' && active?.kind === 'external' && <ExternalDocumentView key={active.document.path} initial={active.document} linked={Boolean(linkedActivePage)} onDocumentChange={(doc) => updateExternalTab(active.key, doc)} onOpenLinkedDocument={(sourcePath, href) => void openLinkedMarkdown(sourcePath, href)} onLinkToNotebook={() => void requestAddMarkdown(active.document)} onRevealInNotebook={() => linkedActivePage && revealSidebarItem(linkedActivePage.id)} />}
     </section>
     {explorerVisible && <div className="panel-resizer explorer-resizer" role="separator" aria-label="Resize Markdown Explorer" aria-orientation="vertical" onPointerDown={(event) => startPanelResize(event, 'explorer')} />}
@@ -679,7 +778,8 @@ export function App() {
     {createDialog?.kind === 'section' && <CreateDialog title="New section" label="Add a section to this notebook. Its first page will open immediately." initialValue="New section" onCancel={() => setCreateDialog(undefined)} onCreate={async (name) => { const section = await window.notes.sections.create(createDialog.notebookId, name); const page = await window.notes.pages.create(section.id, 'Untitled'); setCreateDialog(undefined); await refresh(); await openPageById(page.id); }} />}
     {renameDialog && <CreateDialog title={`Rename ${renameDialog.kind}`} label={`Choose a new name for “${renameDialog.name}”.`} initialValue={renameDialog.name} submitLabel="Rename" busyLabel="Renaming…" onCancel={() => setRenameDialog(undefined)} onCreate={async (name) => { if (renameDialog.kind === 'notebook') await window.notes.notebooks.rename(renameDialog.id, name); else await window.notes.sections.rename(renameDialog.id, name); setRenameDialog(undefined); await refresh(); }} />}
     {linkDialog && <LinkMarkdownDialog document={linkDialog} navigation={navigation} onCancel={() => setLinkDialog(undefined)} onLink={(sectionId) => addMarkdownToSection(linkDialog, sectionId)} />}
-    {menu && <div className="context-menu" style={{ left: Math.min(menu.x, innerWidth - 190), top: Math.min(menu.y, innerHeight - 190) }} onClick={(e) => e.stopPropagation()}>{menu.page.isDeleted ? <><button onClick={() => void handlePageMenu('restore')}>Restore</button><button className="danger" onClick={() => void handlePageMenu('remove')}>Delete permanently</button></> : menu.page.externalPath ? <><button onClick={() => void openPageById(menu.page.id)}>Open linked file</button><button onClick={() => void handlePageMenu('favorite')}>{menu.page.isFavorite ? 'Remove from favorites' : 'Add to favorites'}</button><hr /><button className="danger" onClick={() => void handlePageMenu('unlink')}>Remove from notebook</button></> : <><button onClick={() => void openPageById(menu.page.id)}>Open</button><button onClick={() => void handlePageMenu('favorite')}>{menu.page.isFavorite ? 'Remove from favorites' : 'Add to favorites'}</button><button onClick={() => void handlePageMenu('export')}>Export Markdown…</button><hr /><button className="danger" onClick={() => void handlePageMenu('trash')}>Move to Trash</button></>}</div>}
+    {vaultDialog && <VaultDialog state={vaultDialog} onCancel={() => setVaultDialog(undefined)} onSubmit={submitVaultPassword} />}
+    {menu && <div className="context-menu" style={{ left: Math.min(menu.x, innerWidth - 210), top: Math.min(menu.y, innerHeight - 240) }} onClick={(e) => e.stopPropagation()}>{menu.page.isDeleted ? <><button onClick={() => void handlePageMenu('restore')}>Restore</button><button className="danger" onClick={() => void handlePageMenu('remove')}>Delete permanently</button></> : menu.page.externalPath ? <><button onClick={() => void openPageById(menu.page.id)}>Open linked file</button><button onClick={() => void handlePageMenu('favorite')}>{menu.page.isFavorite ? 'Remove from favorites' : 'Add to favorites'}</button><hr /><button className="danger" onClick={() => void handlePageMenu('unlink')}>Remove from notebook</button></> : menu.page.isEncrypted ? <><button onClick={() => void openPageById(menu.page.id)}>Open</button>{menu.page.isLocked ? <button onClick={() => void handlePageMenu('unlock')}><UnlockKeyhole size={13} />Unlock private pages…</button> : <><button onClick={() => void handlePageMenu('lock-vault')}><LockKeyhole size={13} />Lock private pages now</button><button onClick={() => void handlePageMenu('decrypt')}>Remove encryption…</button></>}<hr /><button className="danger" onClick={() => void handlePageMenu('trash')}>Move to Trash</button></> : <><button onClick={() => void openPageById(menu.page.id)}>Open</button><button onClick={() => void handlePageMenu('favorite')}>{menu.page.isFavorite ? 'Remove from favorites' : 'Add to favorites'}</button><button onClick={() => void handlePageMenu('export')}>Export Markdown…</button><button onClick={() => void handlePageMenu('encrypt')}><LockKeyhole size={13} />Encrypt page…</button><hr /><button className="danger" onClick={() => void handlePageMenu('trash')}>Move to Trash</button></>}</div>}
     {structureMenu && <div className="context-menu structure-menu" style={{ left: Math.min(structureMenu.x, innerWidth - 210), top: Math.min(structureMenu.y, innerHeight - 190) }} onClick={(event) => event.stopPropagation()}><div className="context-title">{structureMenu.item.name}</div><button onClick={() => void handleStructureMenu('add')}>{structureMenu.kind === 'notebook' ? 'Add section' : 'Add sidebar page'}</button>{structureMenu.kind === 'section' && <button onClick={() => void handleStructureMenu('link')}>Add Markdown file…</button>}<button onClick={() => void handleStructureMenu('rename')}>Rename {structureMenu.kind}…</button><hr /><button className="danger" onClick={() => void handleStructureMenu('delete')}>Delete {structureMenu.kind}</button></div>}
     {toast && <ToastNotice toast={toast} onClose={() => setToast(undefined)} />}
   </div>;
