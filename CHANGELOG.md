@@ -4,6 +4,8 @@ All notable changes to Noteleaf are documented here.
 
 ## Unreleased
 
+## 1.3.0 — 2026-09-04
+
 - Adds one-switch ChatGPT Desktop and local Codex client access by safely managing only Noteleaf's block in the shared local MCP configuration.
 - Keeps ChatGPT web as a separate, optional Secure MCP Tunnel workflow because hosted chats cannot read a computer's local MCP configuration.
 - Remembers collapsed and expanded notebooks and sections across app restarts.
