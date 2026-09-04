@@ -20,10 +20,6 @@
     "electron",
     "local-first"
   ],
-  "noteleafOAuth": {
-    "googleClientId": "933340466637-27nu9nt9ov2epgmagpb17gv42nhsqa7i.apps.googleusercontent.com",
-    "microsoftClientId": ""
-  },
   "type": "module",
   "main": "dist/main/index.js",
   "scripts": {

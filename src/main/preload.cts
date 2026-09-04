@@ -63,10 +63,6 @@ const api: NotesApi = {
     setSchedule: (frequency, retention) => invoke('backup:set-schedule', frequency, retention),
     restore: (password) => invoke('backup:restore', password),
     openFolder: () => invoke('backup:open-folder'),
-    connectCloud: (provider) => invoke('backup:connect-cloud', provider),
-    disconnectCloud: (provider) => invoke('backup:disconnect-cloud', provider),
-    useDestination: (destination) => invoke('backup:use-destination', destination),
-    restoreCloud: (path, password) => invoke('backup:restore-cloud', path, password),
     setEncryptionPassword: (password) => invoke('backup:set-encryption-password', password),
   },
   mcp: {

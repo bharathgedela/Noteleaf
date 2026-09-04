@@ -1,5 +1,5 @@
 import { ipcMain, shell } from 'electron';
-import type { AppSettings, BackupDestination, BackupFrequency, CloudBackupProvider, MarkdownViewMode, TaskStatus } from '../shared/types.js';
+import type { AppSettings, BackupFrequency, MarkdownViewMode, TaskStatus } from '../shared/types.js';
 import type { NotesRepository } from './database/repository.js';
 import type { FileService } from './files.js';
 import type { BackupService } from './backup/service.js';
@@ -16,7 +16,7 @@ const CHANNELS = [
   'files:open-linked', 'files:open-folder', 'files:save', 'files:save-as', 'files:draft', 'files:clear-draft', 'files:import', 'files:link', 'files:export', 'files:recent',
   'files:attachment', 'settings:get', 'settings:update', 'settings:open-data', 'system:open-external',
   'backup:status', 'backup:choose-folder', 'backup:create', 'backup:set-schedule', 'backup:restore', 'backup:open-folder',
-  'backup:connect-cloud', 'backup:disconnect-cloud', 'backup:use-destination', 'backup:restore-cloud', 'backup:set-encryption-password',
+  'backup:set-encryption-password',
   'mcp:status', 'mcp:regenerate-access-link',
   'ai-access:status', 'ai-access:enable', 'ai-access:disable', 'ai-access:open-chatgpt-web-setup',
 ] as const;
@@ -138,10 +138,6 @@ export function registerIpc(
   ipcMain.handle('backup:set-schedule', (_event, frequency: BackupFrequency, retention: number) => backups.setSchedule(frequency, retention));
   ipcMain.handle('backup:restore', (_event, password?: unknown) => backups.restore(optionalPassword(password)));
   ipcMain.handle('backup:open-folder', () => backups.openFolder());
-  ipcMain.handle('backup:connect-cloud', (_event, provider: CloudBackupProvider) => backups.connectCloud(provider));
-  ipcMain.handle('backup:disconnect-cloud', (_event, provider: CloudBackupProvider) => backups.disconnectCloud(provider));
-  ipcMain.handle('backup:use-destination', (_event, destination: BackupDestination) => backups.useDestination(destination));
-  ipcMain.handle('backup:restore-cloud', (_event, path: string, password?: unknown) => backups.restoreCloud(text(path, 'Cloud backup', 1000), optionalPassword(password)));
   ipcMain.handle('backup:set-encryption-password', (_event, password: unknown) => backups.setEncryptionPassword(passwordValue(password)));
   ipcMain.handle('mcp:status', () => mcp.status());
   ipcMain.handle('mcp:regenerate-access-link', () => aiAccess.regenerateAccessLink());

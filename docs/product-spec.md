@@ -26,7 +26,7 @@ The collapsible Markdown Explorer appears on the right side of the workspace. Us
 
 Recovered external-file drafts can be discarded reliably, which clears the persisted draft, restores the on-disk content, and closes the recovery banner. The banner also has a separate close control that keeps the recovered text while dismissing the message.
 
-Live multi-device editing, collaboration, databases, canvases, and other generalized productivity features are intentionally excluded. Disaster recovery is included through portable, end-to-end encrypted `.notesbackup` archives. Users can connect a narrowly scoped Google Drive or OneDrive application folder directly, use a desktop-synced folder, or choose any local folder.
+Live multi-device editing, collaboration, databases, canvases, and other generalized productivity features are intentionally excluded. Disaster recovery is included through portable, end-to-end encrypted `.notesbackup` archives. Users choose any local folder, including a folder managed by an installed Google Drive or OneDrive desktop sync application.
 
 ## Daily tasks
 
@@ -43,4 +43,4 @@ Live multi-device editing, collaboration, databases, canvases, and other general
 - Newly configured backup folders default to automatic hourly backups while Noteleaf is running; hourly, daily, weekly, and off remain available in Settings.
 - Retention is configurable from 5 to 50 backups; only files created by Noteleaf or a compatible pre-1.0 Notes version are eligible for cleanup.
 - Restore validates the archive and its database, creates a safety backup of the current library, then restarts and applies the replacement before SQLite opens.
-- Noteleaf supports direct, narrow-scope transfer to an app-created Google Drive or OneDrive folder as well as desktop-synced and ordinary local folders. Providers receive only the encrypted archive and can observe file metadata such as name, size, and timestamps.
+- Noteleaf does not connect to cloud accounts. Users can choose an ordinary local folder or one inside an installed Google Drive or OneDrive desktop sync location; the provider's sync app receives only the encrypted archive and can observe file metadata such as name, size, and timestamps.

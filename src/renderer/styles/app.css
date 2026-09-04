@@ -539,6 +539,7 @@ body.image-resizing, body.image-resizing * { cursor: ew-resize !important; user-
 .backup-restore-password small { grid-column: 1 / -1; margin: 0; }
 .backup-folder.active { border-color: color-mix(in srgb, var(--accent) 42%, var(--border)); }
 .backup-folder strong { display: block; overflow: hidden; margin-bottom: 9px; color: var(--muted); font-size: 10px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.backup-folder > small { display: block; margin-top: 8px; color: var(--faint); font-size: 9px; line-height: 1.45; }
 .backup-folder > div, .backup-actions { display: flex; gap: 7px; }
 .backup-row { min-height: 56px; padding-top: 8px; padding-bottom: 8px; }
 .backup-actions { padding: 14px 24px 4px; }
@@ -554,17 +555,6 @@ body.image-resizing, body.image-resizing * { cursor: ew-resize !important; user-
 .backup-history > div span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .backup-history > div small { flex: none; color: var(--faint); }
 .backup-history > div button { flex: none; padding: 3px 7px; font-size: 9px; }
-.cloud-backup-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin: 0 24px 10px; }
-.cloud-backup-card { min-width: 0; display: grid; grid-template-columns: auto 1fr; gap: 9px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
-.cloud-backup-card.active { border-color: color-mix(in srgb, var(--accent) 48%, var(--border)); box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 8%, transparent); }
-.cloud-provider-mark { width: 31px; height: 31px; display: grid; place-items: center; border-radius: 8px; }
-.cloud-provider-mark.google-drive { background: color-mix(in srgb, #34a853 13%, var(--surface)); color: #278440; }
-.cloud-provider-mark.onedrive { background: color-mix(in srgb, #1686d9 13%, var(--surface)); color: #1674b8; }
-.cloud-backup-card > div { min-width: 0; }
-.cloud-backup-card strong, .cloud-backup-card small { display: block; }
-.cloud-backup-card strong { font-size: 11px; }
-.cloud-backup-card small { min-height: 30px; margin: 4px 0 8px; color: var(--muted); font-size: 9px; line-height: 1.45; }
-.cloud-backup-card > div > div { display: flex; flex-wrap: wrap; gap: 5px; }
 .context-menu { position: fixed; z-index: 120; width: 180px; padding: 5px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface); box-shadow: 0 9px 28px rgba(20,20,18,.18); }
 .context-menu button { width: 100%; display: flex; align-items: center; gap: 7px; border: 0; border-radius: 4px; padding: 7px 9px; background: transparent; color: var(--text); cursor: pointer; font-size: 12px; text-align: left; }
 .context-menu button:hover { background: var(--surface-hover); }

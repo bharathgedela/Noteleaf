@@ -7,33 +7,17 @@ title: Noteleaf Privacy Policy
 
 Last updated: September 4, 2026
 
-Noteleaf is a local-first desktop application. This policy explains what information Noteleaf accesses and how optional integrations use it.
+Noteleaf is a local-first desktop application. This policy explains what information Noteleaf accesses and how optional features use it.
 
 ## Local notes and tasks
 
 Your notes, tasks, settings, drafts, and managed attachments are stored locally on your computer. Noteleaf does not operate a server that receives or stores this content.
 
-## Google Drive backups
+## Encrypted backups and synced folders
 
-Google Drive access is optional and begins only after you select **Connect Google Drive** and approve Google's consent screen. Noteleaf requests `https://www.googleapis.com/auth/drive.file`, which permits it to create and manage only the Drive files and folders created by Noteleaf or explicitly opened with it.
+Noteleaf writes encrypted `.notesbackup` files only to a folder you explicitly select through the operating system's folder picker. It does not connect to Google Drive, Microsoft OneDrive, or another cloud provider, request OAuth access, browse cloud files, or store cloud credentials.
 
-Noteleaf uses this access solely to:
-
-- create its dedicated **Noteleaf Backups** folder;
-- upload encrypted `.notesbackup` files;
-- list Noteleaf-created backups for display and retention;
-- download a selected backup for restoration; and
-- delete older Noteleaf-created backups according to the retention setting you choose.
-
-Noteleaf does not use Google Drive access to browse unrelated files, build advertising profiles, sell data, or transfer Google user data to data brokers. Google Drive data is not used to train AI models.
-
-Backup contents are encrypted on your computer with a password-derived key before upload. Google receives the encrypted archive and ordinary file metadata such as its name, size, and timestamps. Noteleaf never sends your backup password to Google. The OAuth refresh token is encrypted locally using the operating system's protected credential storage and is not included in backups.
-
-Noteleaf's use and transfer of information received from Google APIs adheres to the [Google API Services User Data Policy](https://developers.google.com/terms/api-services-user-data-policy), including the Limited Use requirements.
-
-## Microsoft OneDrive backups
-
-If enabled in a future configured build, OneDrive access is similarly limited to Noteleaf's application folder. Noteleaf uses it only to upload, list, download, and apply retention to encrypted Noteleaf backups.
+If a desktop sync application is installed, you can select a folder inside its local synced location. That sync application—not Noteleaf—may then upload the encrypted backup according to its own settings and privacy policy. The provider may see ordinary file metadata such as the filename, size, and timestamps, but backup contents are encrypted on your computer first. Noteleaf never sends or stores the backup password.
 
 ## AI access
 
@@ -41,11 +25,11 @@ AI access is optional and disabled until you enable it. Local AI clients can req
 
 ## Retention and deletion
 
-Backup retention is controlled by your Noteleaf settings. Disconnecting Google Drive removes Noteleaf's locally stored OAuth credentials but does not automatically delete backups already stored in Drive. You can delete those files in Google Drive or reconnect Noteleaf and let its retention controls manage them. You can revoke Noteleaf's Google access at any time from your Google Account's third-party connections page.
+Backup retention is controlled by your Noteleaf settings and applies to compatible backup files in the selected folder. Removing a folder from your sync provider or disabling its desktop client is managed outside Noteleaf.
 
 ## Sharing and disclosure
 
-Noteleaf does not sell personal information. The project has no application-operated analytics or advertising service. Data may be processed by Google, Microsoft, or an AI provider only when you explicitly enable the corresponding integration, under that provider's terms.
+Noteleaf does not sell personal information. The project has no application-operated analytics or advertising service. Data may be processed by a sync application or AI provider only when you explicitly use that software or enable the corresponding integration, under that provider's terms.
 
 ## Security
 
