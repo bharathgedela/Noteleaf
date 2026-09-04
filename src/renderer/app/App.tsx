@@ -9,7 +9,7 @@ import { BrandLogo } from '../components/BrandLogo';
 import { hasPrimaryModifier, shortcut } from '../platform';
 
 const EMPTY_NAV: NavigationData = { notebooks: [], favorites: [], recent: [], trash: [] };
-const DEFAULT_SETTINGS: AppSettings = { theme: 'light', editorFontSize: 16, codeFontSize: 14, lineWidth: 880, spellcheck: true, defaultMarkdownMode: 'preview', reopenPreviousSession: true, backupFolder: '', backupFrequency: 'hourly', backupRetention: 10, lastBackupAt: null, lastBackupError: null, mcpEnabled: false, mcpAllowWrites: false, mcpPort: 37931, mcpAccessToken: '' };
+const DEFAULT_SETTINGS: AppSettings = { theme: 'light', editorFontSize: 16, codeFontSize: 14, lineWidth: 880, spellcheck: true, defaultMarkdownMode: 'preview', reopenPreviousSession: true, backupFolder: '', backupDestination: 'local', backupFrequency: 'hourly', backupRetention: 10, lastBackupAt: null, lastBackupError: null, mcpEnabled: false, mcpAllowWrites: false, mcpPort: 37931, mcpAccessToken: '' };
 type Tab = { kind: 'internal'; key: string; pageId: string; title: string; history: string[]; historyIndex: number } | { kind: 'external'; key: string; document: ExternalDocument };
 type StructureMenu = { kind: 'notebook'; item: NotebookTree; x: number; y: number } | { kind: 'section'; item: SectionTree; x: number; y: number };
 type RenameDialogState = { kind: 'notebook' | 'section'; id: string; name: string };
@@ -216,6 +216,9 @@ function SettingsDialog({ settings, onChange, onClose }: { settings: AppSettings
   const [backup, setBackup] = useState<BackupStatus>();
   const [backupBusy, setBackupBusy] = useState(false);
   const [backupMessage, setBackupMessage] = useState('');
+  const [backupPassword, setBackupPassword] = useState('');
+  const [backupPasswordConfirm, setBackupPasswordConfirm] = useState('');
+  const [restorePassword, setRestorePassword] = useState('');
   const [aiAccess, setAiAccess] = useState<AiAccessStatus>();
   const [aiBusy, setAiBusy] = useState(false);
   const [aiMessage, setAiMessage] = useState('');
@@ -248,7 +251,11 @@ function SettingsDialog({ settings, onChange, onClose }: { settings: AppSettings
       setAiAccess(await aiApi.status().catch(() => aiAccess));
     } finally { setAiBusy(false); }
   };
-  const providerName = backup?.provider === 'onedrive' ? 'OneDrive synced folder' : backup?.provider === 'google-drive' ? 'Google Drive synced folder' : backup?.provider === 'local' ? 'Local folder' : 'Not configured';
+  const providerName = backup?.destination === 'onedrive' ? 'OneDrive cloud' : backup?.destination === 'google-drive' ? 'Google Drive cloud' : backup?.provider === 'onedrive' ? 'OneDrive synced folder' : backup?.provider === 'google-drive' ? 'Google Drive synced folder' : backup?.provider === 'local' ? 'Local folder' : 'Not configured';
+  const googleBackup = backup?.cloudConnections.find((item) => item.provider === 'google-drive');
+  const oneDriveBackup = backup?.cloudConnections.find((item) => item.provider === 'onedrive');
+  const destinationReady = backup?.destination === 'local' ? Boolean(backup.folder) : Boolean(backup?.cloudConnections.find((item) => item.provider === backup.destination)?.connected);
+  const backupReady = Boolean(destinationReady && backup?.encryptionConfigured);
   const aiEnabled = aiAccess?.enabled ?? settings.mcpEnabled;
   const claude: AiAccessStatus['claude'] = aiAccess?.claude || { state: aiEnabled ? 'not-installed' : 'disabled', detail: null };
   const chatgpt: AiAccessStatus['chatgpt'] = aiAccess?.chatgpt || { state: aiEnabled ? 'setup-required' : 'disabled', detail: null };
@@ -283,16 +290,25 @@ function SettingsDialog({ settings, onChange, onClose }: { settings: AppSettings
         {aiAccess && <details className="ai-technical-details"><summary>Technical details</summary><div><span>Local service</span><strong>{aiAccess.running ? `Running on port ${aiAccess.port ?? settings.mcpPort}` : 'Stopped'}</strong>{aiAccess.endpoint && <code title={aiAccess.endpoint}>{aiAccess.endpoint}</code>}</div></details>}
       </section>
       <section className="backup-settings">
-        <div className="settings-section-title"><div><h3>Backup &amp; recovery</h3><p>Save the complete Noteleaf library and attachments to a synced or local folder.</p></div><span className={`provider-badge ${backup?.provider || 'none'}`}>{providerName}</span></div>
-        <div className="backup-folder"><strong>{backup?.folder || 'Choose a OneDrive, Google Drive, or local folder'}</strong><div><button disabled={backupBusy} onClick={() => void runBackupAction(async () => { const selected = await window.notes.backup.chooseFolder(); if (selected) setBackup(selected); })}>{backup?.folder ? 'Change folder…' : 'Choose folder…'}</button>{backup?.folder && <button disabled={backupBusy} onClick={() => void runBackupAction(() => window.notes.backup.openFolder())}>Open folder</button>}</div></div>
-        <div className="setting-row backup-row"><label>Automatic backup<small>Hourly by default while Noteleaf is open.</small></label><select disabled={!backup?.folder || backupBusy} value={backup?.frequency || 'hourly'} onChange={(e) => void runBackupAction(async () => { setBackup(await window.notes.backup.setSchedule(e.target.value as BackupStatus['frequency'], backup?.retention || 10)); })}><option value="hourly">Every hour</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="off">Off</option></select></div>
-        <div className="setting-row backup-row"><label>Keep backups<small>Older automatic backups are removed from this folder.</small></label><select disabled={!backup?.folder || backupBusy} value={backup?.retention || 10} onChange={(e) => void runBackupAction(async () => { setBackup(await window.notes.backup.setSchedule(backup?.frequency || 'off', Number(e.target.value))); })}><option value="5">5 backups</option><option value="10">10 backups</option><option value="20">20 backups</option><option value="50">50 backups</option></select></div>
-        <div className="backup-actions"><button className="primary" disabled={!backup?.folder || backupBusy} onClick={() => void runBackupAction(async () => { const created = await window.notes.backup.create(); setBackupMessage(`Backup created: ${created.filename}`); })}>{backupBusy ? 'Working…' : 'Back up now'}</button><button disabled={backupBusy} onClick={() => void runBackupAction(async () => { await window.notes.backup.restore(); })}>Restore backup…</button></div>
+        <div className="settings-section-title"><div><h3>Backup &amp; recovery</h3><p>Protect the complete Noteleaf library and attachments—even without a sync app installed.</p></div><span className={`provider-badge ${backup?.provider || 'none'}`}>{providerName}</span></div>
+        <div className={`backup-encryption${backup?.encryptionConfigured ? ' configured' : ''}`}>
+          <div className="backup-encryption-heading"><span aria-hidden="true"><ShieldCheck size={18} /></span><div><strong>{backup?.encryptionConfigured ? 'End-to-end encryption is on' : 'Set a backup password'}</strong><small>Every new backup is encrypted on this computer with AES-256-GCM before it reaches any folder or cloud provider.</small></div></div>
+          <div className="backup-password-fields"><input type="password" minLength={16} maxLength={1024} autoComplete="new-password" aria-label="Backup password" placeholder={backup?.encryptionConfigured ? 'New password (16+ characters)' : 'Password (16+ characters)'} value={backupPassword} onChange={(event) => setBackupPassword(event.target.value)} /><input type="password" minLength={16} maxLength={1024} autoComplete="new-password" aria-label="Confirm backup password" placeholder="Confirm password" value={backupPasswordConfirm} onChange={(event) => setBackupPasswordConfirm(event.target.value)} /><button disabled={backupBusy || backupPassword.length < 16 || backupPasswordConfirm.length < 16} onClick={() => void runBackupAction(async () => { if (backupPassword !== backupPasswordConfirm) throw new Error('Backup passwords do not match.'); setBackup(await window.notes.backup.setEncryptionPassword(backupPassword)); setBackupPassword(''); setBackupPasswordConfirm(''); setBackupMessage(backup?.encryptionConfigured ? 'Password changed for future backups.' : 'Backup encryption enabled.'); })}>{backup?.encryptionConfigured ? 'Change password' : 'Enable encryption'}</button></div>
+          <p>Noteleaf never stores the password or sends it to Google or Microsoft. Keep it somewhere safe: a forgotten password cannot be recovered. Changing it affects future backups only.</p>
+        </div>
+        <div className="cloud-backup-grid">
+          {([['google-drive', 'Google Drive', googleBackup], ['onedrive', 'OneDrive', oneDriveBackup]] as const).map(([provider, label, connection]) => <article className={`cloud-backup-card${backup?.destination === provider ? ' active' : ''}`} key={provider}><span className={`cloud-provider-mark ${provider}`} aria-hidden="true"><CloudUpload size={17} /></span><div><strong>{label}</strong><small>{connection?.connected ? 'Connected to the dedicated encrypted-backup folder.' : connection?.configured ? 'Connect only to a dedicated Noteleaf backup folder.' : connection?.detail || 'Unavailable in this build.'}</small><div>{connection?.connected ? <><button disabled={backupBusy || backup?.destination === provider} onClick={() => void runBackupAction(async () => { setBackup(await window.notes.backup.useDestination(provider)); })}>{backup?.destination === provider ? 'In use' : 'Use for backups'}</button><button disabled={backupBusy} onClick={() => void runBackupAction(async () => { setBackup(await window.notes.backup.disconnectCloud(provider)); })}>Disconnect</button></> : <button disabled={backupBusy || !connection?.configured} onClick={() => void runBackupAction(async () => { setBackup(await window.notes.backup.connectCloud(provider)); setBackupMessage(backup?.encryptionConfigured ? `${label} connected. Encrypted hourly backups are on.` : `${label} connected. Set a backup password to start hourly backups.`); })}>Connect {label}</button>}</div></div></article>)}
+        </div>
+        <div className={`backup-folder${backup?.destination === 'local' ? ' active' : ''}`}><strong>{backup?.destination === 'local' ? backup.folder || 'No local backup folder selected' : backup?.folder}</strong><div><button disabled={backupBusy} onClick={() => void runBackupAction(async () => { const selected = await window.notes.backup.chooseFolder(); if (selected) setBackup(selected); })}>{backup?.folder && backup?.destination === 'local' ? 'Change local folder…' : 'Choose local folder…'}</button>{backup?.destination === 'local' && backup?.folder && <button disabled={backupBusy} onClick={() => void runBackupAction(() => window.notes.backup.openFolder())}>Open folder</button>}</div></div>
+        <div className="setting-row backup-row"><label>Automatic backup<small>Runs while Noteleaf is open.</small></label><select disabled={!backupReady || backupBusy} value={backup?.frequency || 'hourly'} onChange={(e) => void runBackupAction(async () => { setBackup(await window.notes.backup.setSchedule(e.target.value as BackupStatus['frequency'], backup?.retention || 10)); })}><option value="hourly">Every hour</option><option value="daily">Daily</option><option value="weekly">Weekly</option><option value="off">Off</option></select></div>
+        <div className="setting-row backup-row"><label>Keep backups<small>Older automatic backups are removed from this destination.</small></label><select disabled={!backupReady || backupBusy} value={backup?.retention || 10} onChange={(e) => void runBackupAction(async () => { setBackup(await window.notes.backup.setSchedule(backup?.frequency || 'off', Number(e.target.value))); })}><option value="5">5 backups</option><option value="10">10 backups</option><option value="20">20 backups</option><option value="50">50 backups</option></select></div>
+        <div className="backup-restore-password"><label htmlFor="restore-backup-password">Password for an older or other-device backup</label><input id="restore-backup-password" type="password" minLength={16} maxLength={1024} autoComplete="current-password" placeholder="Optional backup password" value={restorePassword} onChange={(event) => setRestorePassword(event.target.value)} /><small>Leave blank for backups made on this computer with the current password.</small></div>
+        <div className="backup-actions"><button className="primary" disabled={!backupReady || backupBusy} onClick={() => void runBackupAction(async () => { const created = await window.notes.backup.create(); setBackupMessage(`Encrypted backup created: ${created.filename}`); })}>{backupBusy ? 'Working…' : 'Back up now'}</button><button disabled={backupBusy || (restorePassword.length > 0 && restorePassword.length < 16)} onClick={() => void runBackupAction(async () => { try { await window.notes.backup.restore(restorePassword || undefined); } finally { setRestorePassword(''); } })}>Restore from file…</button>{destinationReady && backup?.destination !== 'local' && <button disabled={backupBusy} onClick={() => void runBackupAction(() => window.notes.backup.openFolder())}>Open cloud folder</button>}</div>
         {backupMessage && <p className="backup-message">{backupMessage}</p>}
         {backup?.lastBackupError && <p className="backup-error">Last backup failed: {backup.lastBackupError}</p>}
         {backup?.lastBackupAt && <p className="backup-last">Last successful backup: {new Date(backup.lastBackupAt).toLocaleString()}</p>}
-        {!!backup?.backups.length && <div className="backup-history"><strong>Recent backups</strong>{backup.backups.slice(0, 3).map((item) => <div key={item.path}><span>{item.filename}</span><small>{(item.size / 1024 / 1024).toFixed(1)} MB</small></div>)}</div>}
-        <p className="backup-note">For cloud protection, select a folder inside the OneDrive or Google Drive desktop app. Noteleaf never receives your cloud password.</p>
+        {!!backup?.backups.length && <div className="backup-history"><strong>Recent backups</strong>{backup.backups.slice(0, 5).map((item) => <div key={item.path}><span>{item.filename}</span><small>{(item.size / 1024 / 1024).toFixed(1)} MB</small>{backup.destination !== 'local' && <button disabled={backupBusy || (restorePassword.length > 0 && restorePassword.length < 16)} onClick={() => void runBackupAction(async () => { try { await window.notes.backup.restoreCloud(item.path, restorePassword || undefined); } finally { setRestorePassword(''); } })}>Restore</button>}</div>)}</div>}
+        <p className="backup-note">Cloud access is limited to Noteleaf’s dedicated backup folder. Providers can see file names, sizes, and timestamps, but backup contents are encrypted before upload. <button className="backup-policy-link" onClick={() => void window.notes.system.openExternal('https://bharathgedela.github.io/Noteleaf/privacy/')}>Privacy policy</button></p>
       </section>
     </div>
     <footer><button onClick={() => void window.notes.settings.openDataFolder()}>Open Noteleaf data folder</button></footer>
@@ -506,7 +522,12 @@ export function App() {
     const status = backupStatus || await window.notes.backup.status();
     if (!status.folder) {
       setSettingsOpen(true);
-      notify('Choose a OneDrive, Google Drive, or local backup folder first.');
+      notify('Connect a cloud backup or choose a local backup folder first.');
+      return;
+    }
+    if (!status.encryptionConfigured) {
+      setSettingsOpen(true);
+      notify('Set a backup password before creating encrypted backups.');
       return;
     }
     setBackupBusy(true);

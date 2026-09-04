@@ -26,7 +26,7 @@ The collapsible Markdown Explorer appears on the right side of the workspace. Us
 
 Recovered external-file drafts can be discarded reliably, which clears the persisted draft, restores the on-disk content, and closes the recovery banner. The banner also has a separate close control that keeps the recovered text while dismissing the message.
 
-Direct cloud accounts, live multi-device editing, collaboration, AI, databases, canvases, and other generalized productivity features are intentionally excluded. Disaster recovery is included through portable `.notesbackup` archives. Users can place these archives in OneDrive or Google Drive desktop-synced folders without giving Noteleaf cloud credentials.
+Live multi-device editing, collaboration, databases, canvases, and other generalized productivity features are intentionally excluded. Disaster recovery is included through portable, end-to-end encrypted `.notesbackup` archives. Users can connect a narrowly scoped Google Drive or OneDrive application folder directly, use a desktop-synced folder, or choose any local folder.
 
 ## Daily tasks
 
@@ -37,10 +37,10 @@ Direct cloud accounts, live multi-device editing, collaboration, AI, databases, 
 
 ## Backup and recovery
 
-- A backup is one compressed, integrity-checked file containing a consistent SQLite snapshot, settings, drafts, and all managed attachments.
+- A backup is one compressed, authenticated-encrypted file containing a consistent SQLite snapshot, settings, drafts, and all managed attachments. New backups require a user password and are encrypted locally with AES-256-GCM before they reach the destination.
 - Users can create a backup immediately or schedule it hourly, daily, or weekly while Noteleaf is running.
 - The top toolbar includes a one-click backup action with progress and completion notifications.
 - Newly configured backup folders default to automatic hourly backups while Noteleaf is running; hourly, daily, weekly, and off remain available in Settings.
 - Retention is configurable from 5 to 50 backups; only files created by Noteleaf or a compatible pre-1.0 Notes version are eligible for cleanup.
 - Restore validates the archive and its database, creates a safety backup of the current library, then restarts and applies the replacement before SQLite opens.
-- Backup folder detection labels OneDrive, Google Drive, and ordinary local folders. Cloud transfer is performed by the provider's desktop sync client.
+- Noteleaf supports direct, narrow-scope transfer to an app-created Google Drive or OneDrive folder as well as desktop-synced and ordinary local folders. Providers receive only the encrypted archive and can observe file metadata such as name, size, and timestamps.

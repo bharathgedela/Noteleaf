@@ -24,6 +24,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   defaultMarkdownMode: 'preview',
   reopenPreviousSession: true,
   backupFolder: '',
+  backupDestination: 'local',
   backupFrequency: 'hourly',
   backupRetention: 10,
   lastBackupAt: null,
@@ -254,7 +255,7 @@ A calm, local-first workspace for notes, Markdown documents, and daily tasks. Yo
 | Linked pages | Type **/page**, name the page, and jump between related ideas without adding sidebar clutter. |
 | Markdown workspace | Open individual Markdown files or browse a complete folder tree inside Noteleaf. |
 | Daily Tasks | Press **Ctrl+T** on Windows or **Command+T** on macOS to plan work as To do, In progress, and Done. |
-| Safe backups | Choose a OneDrive, Google Drive, or local folder and Noteleaf backs up automatically every hour. |
+| Safe backups | Connect Google Drive or OneDrive, or choose a local folder, and Noteleaf backs up automatically every hour. |
 
 ## Your first five minutes
 
@@ -285,7 +286,7 @@ A calm, local-first workspace for notes, Markdown documents, and daily tasks. Yo
 
 ## Local-first by design
 
-Noteleaf does not require an account or send your content to a server. For protection from computer failure, configure the built-in backup to a synced folder. You stay in control of both the working library and every backup file.
+Noteleaf does not require an account and keeps the working library on this computer. For protection from computer failure, connect a dedicated Google Drive or OneDrive backup folder, or choose a local folder. Cloud access is optional and limited to Noteleaf backups.
 
 You are ready—turn this guide into your own first note, or keep it nearby as a reference.`;
     const html = `<h1>Welcome to Noteleaf</h1>
@@ -298,7 +299,7 @@ You are ready—turn this guide into your own first note, or keep it nearby as a
 <tr><td><p><strong>Linked pages</strong></p></td><td><p>Type <strong>/page</strong>, name the page, and jump between related ideas without adding sidebar clutter.</p></td></tr>
 <tr><td><p><strong>Markdown workspace</strong></p></td><td><p>Open individual Markdown files or browse a complete folder tree inside Noteleaf.</p></td></tr>
 <tr><td><p><strong>Daily Tasks</strong></p></td><td><p>Press <strong>Ctrl+T</strong> on Windows or <strong>Command+T</strong> on macOS to plan work as To do, In progress, and Done.</p></td></tr>
-<tr><td><p><strong>Safe backups</strong></p></td><td><p>Choose a OneDrive, Google Drive, or local folder and Noteleaf backs up automatically every hour.</p></td></tr>
+<tr><td><p><strong>Safe backups</strong></p></td><td><p>Connect Google Drive or OneDrive, or choose a local folder, and Noteleaf backs up automatically every hour.</p></td></tr>
 </tbody></table>
 <h2>Your first five minutes</h2>
 <ul><li><p>☐ Rename the <strong>Welcome</strong> notebook for your first project.</p></li><li><p>☐ Create a section and add a note with its <strong>+</strong> button.</p></li><li><p>☐ Type <strong>/</strong> in a note to explore blocks and linked pages.</p></li><li><p>☐ Press <strong>Ctrl+T</strong> on Windows or <strong>Command+T</strong> on macOS and add today's first task.</p></li><li><p>☐ Select <strong>Backup</strong> in the top toolbar and choose a protected folder.</p></li></ul>
@@ -307,7 +308,7 @@ You are ready—turn this guide into your own first note, or keep it nearby as a
 <h2>Helpful details</h2>
 <ol><li><p>Drag the small grips in the sidebar to reorder notebooks, sections, and pages.</p></li><li><p>Paste an image into a note, select it, then drag an edge to resize it.</p></li><li><p>Relative links in Markdown files open the linked file directly inside Noteleaf.</p></li><li><p>Deleted pages remain in Trash until you remove them permanently.</p></li><li><p>Backups include your notes, linked pages, attachments, settings, drafts, and Tasks.</p></li></ol>
 <h2>Local-first by design</h2>
-<p>Noteleaf does not require an account or send your content to a server. For protection from computer failure, configure the built-in backup to a synced folder. You stay in control of both the working library and every backup file.</p>
+<p>Noteleaf does not require an account and keeps the working library on this computer. For protection from computer failure, connect a dedicated Google Drive or OneDrive backup folder, or choose a local folder. Cloud access is optional and limited to Noteleaf backups.</p>
 <p><strong>You are ready—turn this guide into your own first note, or keep it nearby as a reference.</strong></p>`;
     this.db.transaction(() => {
       this.db.prepare('INSERT INTO notebooks VALUES (?, ?, 0, ?, ?)').run(notebookId, 'Welcome', created, created);

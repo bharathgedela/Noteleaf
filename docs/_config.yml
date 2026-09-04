@@ -1,0 +1,6 @@
+title: Noteleaf
+description: A local-first notebook, daily task tracker, and Markdown workspace.
+theme: minima
+repository: bharathgedela/Noteleaf
+url: https://bharathgedela.github.io
+baseurl: /Noteleaf

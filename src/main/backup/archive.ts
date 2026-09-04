@@ -1,23 +1,61 @@
-import { createHash } from 'node:crypto';
+import { createCipheriv, createDecipheriv, createHash, hkdfSync, randomBytes, scrypt } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
-import { appendFile, mkdir, open, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
-import { basename, dirname, join, relative, resolve, sep } from 'node:path';
+import { appendFile, mkdir, open, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { createGunzip, createGzip } from 'node:zlib';
 
-const MAGIC = 'NOTES_BACKUP_V1\n';
+const PAYLOAD_MAGIC = 'NOTES_BACKUP_V1\n';
+const ENCRYPTED_MAGIC = 'NOTELEAF_ENCRYPTED_BACKUP_V2\n';
 const MAX_HEADER = 64 * 1024;
+const KEY_LENGTH = 32;
+const SALT_LENGTH = 16;
+const IV_LENGTH = 12;
+const TAG_LENGTH = 16;
+const SCRYPT_N = 131_072;
+const SCRYPT_R = 8;
+const SCRYPT_P = 1;
+const SCRYPT_MAX_MEMORY = 256 * 1024 * 1024;
+const HKDF_INFO = Buffer.from('Noteleaf backup archive key v2', 'utf8');
 
-interface EntryHeader {
-  path: string;
-  size: number;
-  sha256: string;
+export interface BackupKeyMaterial { rootKey: Buffer; recoverySalt: Buffer }
+export interface BackupUnlock { material?: BackupKeyMaterial; passphrase?: string }
+
+interface EntryHeader { path: string; size: number; sha256: string }
+interface EncryptionHeader {
+  formatVersion: 2;
+  cipher: 'aes-256-gcm';
+  kdf: 'scrypt';
+  salt: string;
+  recoverySalt: string;
+  iv: string;
+  n: number;
+  r: number;
+  p: number;
+  tagLength: number;
 }
 
 async function sha256(path: string): Promise<string> {
   const hash = createHash('sha256');
   for await (const chunk of createReadStream(path)) hash.update(chunk as Buffer);
   return hash.digest('hex');
+}
+
+async function deriveRootKey(passphrase: string, salt: Buffer): Promise<Buffer> {
+  if (!passphrase) throw new Error('This backup is encrypted. Enter its backup password first.');
+  return new Promise((resolveKey, reject) => scrypt(passphrase, salt, KEY_LENGTH, { N: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P, maxmem: SCRYPT_MAX_MEMORY }, (error, key) => {
+    if (error) reject(error); else resolveKey(key as Buffer);
+  }));
+}
+
+export async function createBackupKeyMaterial(passphrase: string, recoverySalt = randomBytes(SALT_LENGTH)): Promise<BackupKeyMaterial> {
+  if (recoverySalt.length !== SALT_LENGTH) throw new Error('Backup recovery salt is invalid.');
+  return { rootKey: await deriveRootKey(passphrase, recoverySalt), recoverySalt: Buffer.from(recoverySalt) };
+}
+
+function archiveKey(material: BackupKeyMaterial, salt: Buffer): Buffer {
+  if (material.rootKey.length !== KEY_LENGTH || material.recoverySalt.length !== SALT_LENGTH || salt.length !== SALT_LENGTH) throw new Error('Backup encryption key material is invalid.');
+  return Buffer.from(hkdfSync('sha256', material.rootKey, salt, HKDF_INFO, KEY_LENGTH));
 }
 
 async function filesBelow(root: string, directory = root): Promise<string[]> {
@@ -39,13 +77,24 @@ function safeTarget(root: string, entryPath: string): string {
   return target;
 }
 
-export async function createArchive(sourceDirectory: string, destination: string): Promise<{ size: number; sha256: string }> {
-  const raw = join(dirname(destination), `.${basename(destination)}.${process.pid}.tmp`);
-  const compressed = `${destination}.tmp`;
+function encryptionHeader(value: unknown): EncryptionHeader {
+  const header = value as Partial<EncryptionHeader>;
+  if (header.formatVersion !== 2 || header.cipher !== 'aes-256-gcm' || header.kdf !== 'scrypt' || header.n !== SCRYPT_N || header.r !== SCRYPT_R || header.p !== SCRYPT_P || header.tagLength !== TAG_LENGTH || typeof header.salt !== 'string' || typeof header.recoverySalt !== 'string' || typeof header.iv !== 'string') throw new Error('Backup encryption metadata is invalid.');
+  const salt = Buffer.from(header.salt, 'base64');
+  const recoverySalt = Buffer.from(header.recoverySalt, 'base64');
+  const iv = Buffer.from(header.iv, 'base64');
+  if (salt.length !== SALT_LENGTH || recoverySalt.length !== SALT_LENGTH || iv.length !== IV_LENGTH || salt.toString('base64') !== header.salt || recoverySalt.toString('base64') !== header.recoverySalt || iv.toString('base64') !== header.iv) throw new Error('Backup encryption metadata is invalid.');
+  return header as EncryptionHeader;
+}
+
+export async function createArchive(sourceDirectory: string, destination: string, material: BackupKeyMaterial): Promise<{ size: number; sha256: string }> {
+  const raw = join(sourceDirectory, `.noteleaf-archive-${randomBytes(12).toString('hex')}.tmp`);
+  const encrypted = `${destination}.tmp`;
   await mkdir(dirname(destination), { recursive: true });
+  const files = await filesBelow(sourceDirectory);
+  let key: Buffer | undefined;
   try {
-    await writeFile(raw, MAGIC);
-    const files = await filesBelow(sourceDirectory);
+    await writeFile(raw, PAYLOAD_MAGIC, { mode: 0o600 });
     for (const path of files) {
       const file = await stat(path);
       const entryPath = relative(sourceDirectory, path).split(sep).join('/');
@@ -55,15 +104,25 @@ export async function createArchive(sourceDirectory: string, destination: string
       await appendFile(raw, '\n');
     }
     await appendFile(raw, '{"end":true}\n');
-    await pipeline(createReadStream(raw), createGzip({ level: 9 }), createWriteStream(compressed));
+
+    const salt = randomBytes(SALT_LENGTH);
+    const iv = randomBytes(IV_LENGTH);
+    const header: EncryptionHeader = { formatVersion: 2, cipher: 'aes-256-gcm', kdf: 'scrypt', salt: salt.toString('base64'), recoverySalt: material.recoverySalt.toString('base64'), iv: iv.toString('base64'), n: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P, tagLength: TAG_LENGTH };
+    const prefix = Buffer.from(`${ENCRYPTED_MAGIC}${JSON.stringify(header)}\n`, 'utf8');
+    key = archiveKey(material, salt);
+    const cipher = createCipheriv('aes-256-gcm', key, iv, { authTagLength: TAG_LENGTH });
+    cipher.setAAD(prefix);
+    await writeFile(encrypted, prefix, { mode: 0o600 });
+    await pipeline(createReadStream(raw), createGzip({ level: 9 }), cipher, createWriteStream(encrypted, { flags: 'a' }));
+    await appendFile(encrypted, cipher.getAuthTag());
     await rm(destination, { force: true });
-    const { rename } = await import('node:fs/promises');
-    await rename(compressed, destination);
+    await rename(encrypted, destination);
     const output = await stat(destination);
     return { size: output.size, sha256: await sha256(destination) };
   } finally {
+    key?.fill(0);
     await rm(raw, { force: true }).catch(() => undefined);
-    await rm(compressed, { force: true }).catch(() => undefined);
+    await rm(encrypted, { force: true }).catch(() => undefined);
   }
 }
 
@@ -87,17 +146,55 @@ async function readLine(handle: Awaited<ReturnType<typeof open>>, offset: number
   throw new Error('Backup archive header is too large.');
 }
 
-export async function extractArchive(archive: string, destination: string): Promise<void> {
-  const raw = join(dirname(destination), `.notes-restore-${process.pid}.tmp`);
+async function decryptArchive(archive: string, raw: string, unlock: BackupUnlock): Promise<boolean> {
+  const handle = await open(archive, 'r');
+  let key: Buffer | undefined;
+  try {
+    const magic = Buffer.alloc(Buffer.byteLength(ENCRYPTED_MAGIC));
+    const first = await handle.read(magic, 0, magic.length, 0);
+    if (first.bytesRead !== magic.length || magic.toString('utf8') !== ENCRYPTED_MAGIC) {
+      await pipeline(createReadStream(archive), createGunzip(), createWriteStream(raw, { mode: 0o600 }));
+      return false;
+    }
+    const headerLine = await readLine(handle, magic.length);
+    const parsed = encryptionHeader(JSON.parse(headerLine.line));
+    const metadata = await handle.stat();
+    const cipherEnd = metadata.size - parsed.tagLength - 1;
+    if (cipherEnd < headerLine.next) throw new Error('Encrypted backup is incomplete.');
+    const tag = Buffer.alloc(parsed.tagLength);
+    const tagRead = await handle.read(tag, 0, tag.length, metadata.size - tag.length);
+    if (tagRead.bytesRead !== tag.length) throw new Error('Encrypted backup is incomplete.');
+    const recoverySalt = Buffer.from(parsed.recoverySalt, 'base64');
+    let root: Buffer | undefined;
+    try {
+      if (unlock.material && unlock.material.recoverySalt.equals(recoverySalt)) root = Buffer.from(unlock.material.rootKey);
+      else root = (await createBackupKeyMaterial(unlock.passphrase || '', recoverySalt)).rootKey;
+      key = archiveKey({ rootKey: root, recoverySalt }, Buffer.from(parsed.salt, 'base64'));
+    } finally { root?.fill(0); }
+    const decipher = createDecipheriv('aes-256-gcm', key, Buffer.from(parsed.iv, 'base64'), { authTagLength: parsed.tagLength });
+    decipher.setAAD(Buffer.from(`${ENCRYPTED_MAGIC}${headerLine.line}\n`, 'utf8'));
+    decipher.setAuthTag(tag);
+    try {
+      await pipeline(createReadStream(archive, { start: headerLine.next, end: cipherEnd }), decipher, createGunzip(), createWriteStream(raw, { mode: 0o600 }));
+    } catch { throw new Error('The backup password is incorrect or the encrypted backup is damaged.'); }
+    return true;
+  } finally {
+    key?.fill(0);
+    await handle.close();
+  }
+}
+
+export async function extractArchive(archive: string, destination: string, unlock: BackupUnlock = {}): Promise<{ encrypted: boolean }> {
+  const raw = join(dirname(destination), `.notes-restore-${randomBytes(12).toString('hex')}.tmp`);
   await rm(destination, { recursive: true, force: true });
   await mkdir(destination, { recursive: true });
   try {
-    await pipeline(createReadStream(archive), createGunzip(), createWriteStream(raw));
+    const encrypted = await decryptArchive(archive, raw, unlock);
     const handle = await open(raw, 'r');
     try {
-      const magic = Buffer.alloc(Buffer.byteLength(MAGIC));
+      const magic = Buffer.alloc(Buffer.byteLength(PAYLOAD_MAGIC));
       const first = await handle.read(magic, 0, magic.length, 0);
-      if (first.bytesRead !== magic.length || magic.toString('utf8') !== MAGIC) throw new Error('This is not a supported Noteleaf backup.');
+      if (first.bytesRead !== magic.length || magic.toString('utf8') !== PAYLOAD_MAGIC) throw new Error('This is not a supported Noteleaf backup.');
       let offset = magic.length;
       let entries = 0;
       while (true) {
@@ -108,8 +205,8 @@ export async function extractArchive(archive: string, destination: string): Prom
         if (typeof header.path !== 'string' || !Number.isSafeInteger(header.size) || header.size < 0 || typeof header.sha256 !== 'string') throw new Error('Backup archive metadata is invalid.');
         const target = safeTarget(destination, header.path);
         await mkdir(dirname(target), { recursive: true });
-        if (header.size) await pipeline(createReadStream(raw, { start: offset, end: offset + header.size - 1 }), createWriteStream(target));
-        else await writeFile(target, '');
+        if (header.size) await pipeline(createReadStream(raw, { start: offset, end: offset + header.size - 1 }), createWriteStream(target, { mode: 0o600 }));
+        else await writeFile(target, '', { mode: 0o600 });
         offset += header.size;
         const separator = Buffer.alloc(1);
         const separatorRead = await handle.read(separator, 0, 1, offset);
@@ -120,15 +217,12 @@ export async function extractArchive(archive: string, destination: string): Prom
         if (entries > 100_000) throw new Error('Backup contains too many files.');
       }
       if (!entries) throw new Error('Backup is empty.');
-    } finally {
-      await handle.close();
-    }
+    } finally { await handle.close(); }
+    return { encrypted };
   } catch (error) {
     await rm(destination, { recursive: true, force: true }).catch(() => undefined);
     throw error;
-  } finally {
-    await rm(raw, { force: true }).catch(() => undefined);
-  }
+  } finally { await rm(raw, { force: true }).catch(() => undefined); }
 }
 
 export async function readBackupManifest(directory: string): Promise<{ formatVersion: number; createdAt: string; appVersion: string }> {

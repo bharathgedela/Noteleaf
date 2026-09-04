@@ -3,6 +3,8 @@ export type ThemePreference = 'light' | 'dark' | 'system';
 export type MarkdownViewMode = 'preview' | 'edit' | 'split';
 export type SaveState = 'saved' | 'saving' | 'unsaved' | 'error';
 export type BackupFrequency = 'off' | 'hourly' | 'daily' | 'weekly';
+export type BackupDestination = 'local' | 'google-drive' | 'onedrive';
+export type CloudBackupProvider = Exclude<BackupDestination, 'local'>;
 export type TaskStatus = 'todo' | 'in_progress' | 'done';
 
 export interface TaskItem {
@@ -24,9 +26,19 @@ export interface BackupInfo {
   sha256?: string;
 }
 
+export interface CloudBackupConnection {
+  provider: CloudBackupProvider;
+  configured: boolean;
+  connected: boolean;
+  detail: string | null;
+}
+
 export interface BackupStatus {
   folder: string;
   provider: 'onedrive' | 'google-drive' | 'local' | 'none';
+  destination: BackupDestination;
+  cloudConnections: CloudBackupConnection[];
+  encryptionConfigured: boolean;
   frequency: BackupFrequency;
   retention: number;
   lastBackupAt: string | null;
@@ -155,6 +167,7 @@ export interface AppSettings {
   defaultMarkdownMode: MarkdownViewMode;
   reopenPreviousSession: boolean;
   backupFolder: string;
+  backupDestination: BackupDestination;
   backupFrequency: BackupFrequency;
   backupRetention: number;
   lastBackupAt: string | null;
@@ -233,8 +246,13 @@ export interface NotesApi {
     chooseFolder(): Promise<BackupStatus | null>;
     create(): Promise<BackupInfo>;
     setSchedule(frequency: BackupFrequency, retention: number): Promise<BackupStatus>;
-    restore(): Promise<boolean>;
+    restore(password?: string): Promise<boolean>;
     openFolder(): Promise<void>;
+    connectCloud(provider: CloudBackupProvider): Promise<BackupStatus>;
+    disconnectCloud(provider: CloudBackupProvider): Promise<BackupStatus>;
+    useDestination(destination: BackupDestination): Promise<BackupStatus>;
+    restoreCloud(path: string, password?: string): Promise<boolean>;
+    setEncryptionPassword(password: string): Promise<BackupStatus>;
   };
   mcp: {
     status(): Promise<McpStatus>;

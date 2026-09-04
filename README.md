@@ -4,7 +4,9 @@
   <img src="assets/noteleaf-logo.png" alt="Noteleaf page-and-leaf logo" width="144">
 </p>
 
-Noteleaf is a polished, local-first notebook, daily task tracker, and Markdown workspace for Windows and macOS. Notes stay on your computer, save automatically, and can be protected with portable backups in a local, OneDrive, or Google Drive-synced folder.
+Noteleaf is a polished, local-first notebook, daily task tracker, and Markdown workspace for Windows and macOS. Notes stay on your computer, save automatically, and can be protected with portable backups sent directly to a private Noteleaf folder in Google Drive or OneDrive. Local and desktop-synced folders remain supported.
+
+[Privacy policy](https://bharathgedela.github.io/Noteleaf/privacy/) · [Terms of use](https://bharathgedela.github.io/Noteleaf/terms/)
 
 Current release: **1.3.0**
 
@@ -20,8 +22,8 @@ See [CHANGELOG.md](CHANGELOG.md) for release notes.
 - Navigate page history and open tabs with working Back and Forward controls.
 - Plan daily work in a dedicated Tasks workspace with To do, In progress, and Done states.
 - Search across the local library, use focus mode, and switch efficiently from the keyboard.
-- Create one-click backups and schedule hourly, daily, or weekly backups with configurable retention.
-- Restore integrity-checked `.notesbackup` archives after an automatic safety backup.
+- Create end-to-end encrypted backups and schedule hourly, daily, or weekly backups with configurable retention, directly in Google Drive, OneDrive, or a local folder.
+- Restore authenticated `.notesbackup` archives after an automatic encrypted safety backup. The backup password stays on the device and cannot be recovered if forgotten.
 - Turn on **AI access** once to automatically configure Claude Desktop, ChatGPT Desktop, and local Codex clients. Connected clients can search, read, and—when explicitly enabled—update notes and daily tasks without copy-paste or per-question scripts. ChatGPT on the web can use the same tools through OpenAI's optional private-tunnel flow.
 - Select important text and use the shield button to protect it from accidental edits while keeping it selectable and copyable. Protected text is also omitted from MCP reads and search results. This is not encryption or a substitute for a password manager.
 - Right-click an internal page to encrypt its title and contents with a session-locked password vault. Locked private pages show only a placeholder and are excluded completely from AI access.

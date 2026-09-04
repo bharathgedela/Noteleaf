@@ -524,6 +524,20 @@ body.image-resizing, body.image-resizing * { cursor: ew-resize !important; user-
 .provider-badge.onedrive { border-color: #78aede; color: #3679b6; }
 .provider-badge.google-drive { border-color: #7cb38b; color: #367b4b; }
 .backup-folder { margin: 0 24px 12px; padding: 11px 12px; border: 1px solid var(--border); border-radius: 7px; background: var(--surface); }
+.backup-encryption { margin: 0 24px 12px; padding: 12px; border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--border)); border-radius: 8px; background: var(--surface); }
+.backup-encryption.configured { border-color: color-mix(in srgb, var(--accent) 48%, var(--border)); }
+.backup-encryption-heading { display: flex; align-items: flex-start; gap: 9px; }
+.backup-encryption-heading > span { display: grid; place-items: center; width: 29px; height: 29px; flex: none; border-radius: 7px; background: color-mix(in srgb, var(--accent) 12%, var(--surface)); color: var(--accent); }
+.backup-encryption-heading strong, .backup-encryption-heading small { display: block; }
+.backup-encryption-heading strong { font-size: 11px; }
+.backup-encryption-heading small, .backup-encryption > p, .backup-restore-password small { margin-top: 3px; color: var(--muted); font-size: 9px; line-height: 1.45; }
+.backup-password-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; gap: 7px; margin-top: 11px; }
+.backup-password-fields input, .backup-restore-password input { min-width: 0; border: 1px solid var(--border-strong); border-radius: 5px; padding: 7px 8px; background: var(--surface); color: var(--text); font: inherit; font-size: 10px; }
+.backup-encryption > p { margin: 9px 0 0; }
+.backup-restore-password { display: grid; grid-template-columns: minmax(0, 1fr) minmax(180px, .8fr); align-items: center; gap: 4px 10px; margin: 10px 24px 0; }
+.backup-restore-password label { color: var(--muted); font-size: 10px; }
+.backup-restore-password small { grid-column: 1 / -1; margin: 0; }
+.backup-folder.active { border-color: color-mix(in srgb, var(--accent) 42%, var(--border)); }
 .backup-folder strong { display: block; overflow: hidden; margin-bottom: 9px; color: var(--muted); font-size: 10px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
 .backup-folder > div, .backup-actions { display: flex; gap: 7px; }
 .backup-row { min-height: 56px; padding-top: 8px; padding-bottom: 8px; }
@@ -533,11 +547,24 @@ body.image-resizing, body.image-resizing * { cursor: ew-resize !important; user-
 .backup-message { color: var(--accent); }
 .backup-error { color: var(--danger); }
 .backup-last, .backup-note { color: var(--faint); }
+.backup-settings .backup-policy-link { border: 0; padding: 0; background: transparent; color: var(--accent); font: inherit; text-decoration: underline; }
 .backup-history { margin: 12px 24px 0; border-top: 1px solid var(--border); padding-top: 10px; }
 .backup-history > strong { display: block; margin-bottom: 5px; color: var(--muted); font-size: 10px; }
-.backup-history > div { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; color: var(--muted); font-size: 10px; }
+.backup-history > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 3px 0; color: var(--muted); font-size: 10px; }
 .backup-history > div span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .backup-history > div small { flex: none; color: var(--faint); }
+.backup-history > div button { flex: none; padding: 3px 7px; font-size: 9px; }
+.cloud-backup-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin: 0 24px 10px; }
+.cloud-backup-card { min-width: 0; display: grid; grid-template-columns: auto 1fr; gap: 9px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.cloud-backup-card.active { border-color: color-mix(in srgb, var(--accent) 48%, var(--border)); box-shadow: 0 4px 14px color-mix(in srgb, var(--accent) 8%, transparent); }
+.cloud-provider-mark { width: 31px; height: 31px; display: grid; place-items: center; border-radius: 8px; }
+.cloud-provider-mark.google-drive { background: color-mix(in srgb, #34a853 13%, var(--surface)); color: #278440; }
+.cloud-provider-mark.onedrive { background: color-mix(in srgb, #1686d9 13%, var(--surface)); color: #1674b8; }
+.cloud-backup-card > div { min-width: 0; }
+.cloud-backup-card strong, .cloud-backup-card small { display: block; }
+.cloud-backup-card strong { font-size: 11px; }
+.cloud-backup-card small { min-height: 30px; margin: 4px 0 8px; color: var(--muted); font-size: 9px; line-height: 1.45; }
+.cloud-backup-card > div > div { display: flex; flex-wrap: wrap; gap: 5px; }
 .context-menu { position: fixed; z-index: 120; width: 180px; padding: 5px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface); box-shadow: 0 9px 28px rgba(20,20,18,.18); }
 .context-menu button { width: 100%; display: flex; align-items: center; gap: 7px; border: 0; border-radius: 4px; padding: 7px 9px; background: transparent; color: var(--text); cursor: pointer; font-size: 12px; text-align: left; }
 .context-menu button:hover { background: var(--surface-hover); }
