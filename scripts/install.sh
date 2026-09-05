@@ -108,6 +108,18 @@ mounted=1
 source_app="$(find "$mount_path" -maxdepth 1 -name 'Noteleaf.app' -print -quit)"
 [ -n "$source_app" ] || { echo "Noteleaf.app was not found in the downloaded DMG." >&2; exit 1; }
 
+echo "Verifying the app signature and Apple notarization..."
+codesign --verify --deep --strict "$source_app" || { echo "The Noteleaf app signature is invalid. Installation was stopped." >&2; exit 1; }
+if ! assessment="$(spctl --assess --type execute --verbose=2 "$source_app" 2>&1)"; then
+  printf '%s\n' "$assessment" >&2
+  echo "Apple Gatekeeper did not accept this app. Installation was stopped." >&2
+  exit 1
+fi
+case "$assessment" in
+  *"source=Notarized Developer ID"*) ;;
+  *) echo "This app is not verified as an Apple-notarized release. Installation was stopped." >&2; exit 1 ;;
+esac
+
 install_dir="$HOME/Applications"
 mkdir -p "$install_dir"
 ditto "$source_app" "$install_dir/Noteleaf.app"
