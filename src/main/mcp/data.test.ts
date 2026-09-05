@@ -21,6 +21,7 @@ describe('NoteleafMcpData', () => {
     directory = join(process.cwd(), `.test-mcp-${randomUUID()}`);
     mkdirSync(directory, { recursive: true });
     repository = new NotesRepository(join(directory, 'notes.db'));
+    repository.updateSettings({ mcpEnabled: true, mcpAllowWrites: true });
     data = new NoteleafMcpData(repository, unusedFiles, onMutation);
     onMutation.mockClear();
   });
@@ -28,6 +29,34 @@ describe('NoteleafMcpData', () => {
   afterEach(() => {
     repository.close();
     rmSync(directory, { recursive: true, force: true });
+  });
+
+  it('rechecks write permission after asynchronous Markdown preparation', async () => {
+    const section = repository.navigation().notebooks[0].sections[0];
+    const before = repository.mcpPages(section.id).length;
+    const creating = data.createPage({ sectionId: section.id, title: 'Revoked during preparation', contentMarkdown: 'private change' });
+    repository.updateSettings({ mcpAllowWrites: false });
+    await expect(creating).rejects.toThrow(/write access is disabled/i);
+    expect(repository.mcpPages(section.id)).toHaveLength(before);
+    expect(onMutation).not.toHaveBeenCalled();
+  });
+
+  it('rechecks permission immediately before a linked file is committed', async () => {
+    const section = repository.navigation().notebooks[0].sections[0];
+    const page = repository.linkExternalPage(section.id, 'Linked original', join(directory, 'linked.md'));
+    const commit = vi.fn();
+    const linkedData = new NoteleafMcpData(repository, {
+      openMarkdown: async () => ({ content: 'original', viewMode: 'preview', modifiedAt: 'revision' }),
+      saveMarkdown: async (_path, _content, _viewMode, beforeCommit) => {
+        repository.updateSettings({ mcpAllowWrites: false });
+        beforeCommit?.();
+        commit();
+      },
+    }, onMutation);
+    await expect(linkedData.updatePage({ pageId: page.id, expectedUpdatedAt: 'revision', title: 'Changed', contentMarkdown: 'changed' })).rejects.toThrow(/write access is disabled/i);
+    expect(commit).not.toHaveBeenCalled();
+    expect(repository.getPage(page.id).title).toBe('Linked original');
+    expect(onMutation).not.toHaveBeenCalled();
   });
 
   it('browses notebooks, sections, sidebar pages, and inline child pages', () => {

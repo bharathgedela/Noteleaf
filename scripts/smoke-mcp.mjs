@@ -1,6 +1,8 @@
 import { mkdtemp, rm } from 'node:fs/promises';
+import { execFileSync } from 'node:child_process';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import electronPath from 'electron';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
@@ -20,6 +22,12 @@ let stderr = '';
 transport.stderr?.on('data', (chunk) => { stderr += String(chunk); });
 
 try {
+  // Opt in only the disposable smoke-test library, using Electron's SQLite ABI.
+  execFileSync(executable, ['--input-type=module', '-e',
+    'const { NotesRepository } = await import(process.argv[1]); const repository = new NotesRepository(process.argv[2]); repository.updateSettings({ mcpEnabled: true, mcpAllowWrites: false }); repository.close();',
+    pathToFileURL(join(dirname(cliEntry), '..', 'database', 'repository.js')).href,
+    join(dataDirectory, 'notes.db'),
+  ], { env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' } });
   await client.connect(transport);
   const tools = await client.listTools();
   const names = tools.tools.map((tool) => tool.name);

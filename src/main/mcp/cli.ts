@@ -18,13 +18,14 @@ class LocalMarkdownAccess implements McpFileAccess {
     return { content: await readFile(path, 'utf8'), viewMode: 'preview', modifiedAt: info.mtime.toISOString() };
   }
 
-  async saveMarkdown(path: string, content: string): Promise<void> {
+  async saveMarkdown(path: string, content: string, _viewMode: MarkdownViewMode, beforeCommit?: () => void): Promise<void> {
     if (Buffer.byteLength(content, 'utf8') > MAX_MARKDOWN_BYTES) throw new Error('Linked Markdown file is too large');
     const temporary = join(dirname(path), `.${randomUUID()}.noteleaf.tmp`);
     const backup = join(dirname(path), `.${randomUUID()}.noteleaf.bak`);
     try {
       await writeFile(temporary, content, 'utf8');
       await copyFile(path, backup);
+      beforeCommit?.();
       await rename(temporary, path);
       await unlink(backup).catch(() => undefined);
     } catch (error) {
@@ -48,6 +49,10 @@ async function main(): Promise<void> {
   await mkdir(dataDirectory, { recursive: true });
   const repository = new NotesRepository(join(dataDirectory, 'notes.db'));
   const settings = repository.getSettings();
+  if (!settings.mcpEnabled) {
+    repository.close();
+    throw new Error('AI access is disabled in Noteleaf. Enable it before connecting.');
+  }
   const server = createNoteleafMcpServer({ repository, files: new LocalMarkdownAccess(), allowWrites: settings.mcpAllowWrites });
   const transport = new StdioServerTransport();
   const close = async () => {

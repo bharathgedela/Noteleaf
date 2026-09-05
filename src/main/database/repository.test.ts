@@ -29,6 +29,17 @@ describe('NotesRepository', () => {
     expect(migration.version).toBe(6);
   });
 
+  it('escapes untrusted HTML in search excerpts while retaining match highlights', () => {
+    const section = repository!.navigation().notebooks[0].sections[0];
+    const page = repository!.createPage(section.id, 'Search safety');
+    repository!.savePage(page.id, { title: page.title, contentHtml: '', contentMarkdown: '<img src=x onerror=alert(1)> needle <style>body{display:none}</style>' });
+    const result = repository!.fullSearch('needle').find((item) => item.id === page.id)!;
+    expect(result.excerpt).toContain('<mark>needle</mark>');
+    expect(result.excerpt).not.toContain('<img');
+    expect(result.excerpt).not.toContain('<style');
+    expect(result.excerpt).toContain('&lt;img');
+  });
+
   it('supports notebook, section, and page CRUD with autosave content', () => {
     const notebook = repository!.createNotebook('Personal');
     const section = repository!.createSection(notebook.id, 'Ideas');

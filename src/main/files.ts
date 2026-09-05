@@ -57,7 +57,7 @@ export class FileService {
     return scanMarkdownFolder(result.filePaths[0]);
   }
 
-  async saveMarkdown(path: string, content: string, viewMode: MarkdownViewMode): Promise<ExternalDocument> {
+  async saveMarkdown(path: string, content: string, viewMode: MarkdownViewMode, beforeCommit?: () => void): Promise<ExternalDocument> {
     if (Buffer.byteLength(content, 'utf8') > MAX_MARKDOWN_BYTES) throw new Error('Markdown file is too large');
     this.repository.saveDraft(path, content);
     const temporary = join(dirname(path), `.${basename(path)}.${randomUUID()}.tmp`);
@@ -65,6 +65,7 @@ export class FileService {
     try {
       await writeFile(temporary, content, 'utf8');
       await copyFile(path, backup).catch(() => undefined);
+      beforeCommit?.();
       await rename(temporary, path);
       await unlink(backup).catch(() => undefined);
       this.repository.clearDraft(path);

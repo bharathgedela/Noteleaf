@@ -21,6 +21,7 @@ describe('Noteleaf MCP server', () => {
     directory = join(process.cwd(), `.test-mcp-server-${randomUUID()}`);
     mkdirSync(directory, { recursive: true });
     repository = new NotesRepository(join(directory, 'notes.db'));
+    repository.updateSettings({ mcpEnabled: true, mcpAllowWrites: true });
   });
 
   afterEach(() => {
@@ -55,5 +56,25 @@ describe('Noteleaf MCP server', () => {
     expect(tools.tools.map((tool) => tool.name)).toEqual(expect.arrayContaining(['create_page', 'update_page', 'create_task', 'update_task']));
     await client.close();
     await server.close();
+  });
+
+  it('revokes permissions on an already connected client using live database settings', async () => {
+    const { client, server } = await connectedClient(true);
+    const otherConnection = new NotesRepository(join(directory, 'notes.db'));
+    try {
+      const arguments_ = { title: 'Revocation test', task_date: '2026-09-05' };
+      expect((await client.callTool({ name: 'create_task', arguments: arguments_ })).isError).not.toBe(true);
+      otherConnection.updateSettings({ mcpAllowWrites: false });
+      expect((await client.callTool({ name: 'create_task', arguments: arguments_ })).isError).toBe(true);
+      expect((await client.callTool({ name: 'get_workspace_overview', arguments: {} })).isError).not.toBe(true);
+      otherConnection.updateSettings({ mcpEnabled: false, mcpAllowWrites: true });
+      expect((await client.callTool({ name: 'get_workspace_overview', arguments: {} })).isError).toBe(true);
+      expect((await client.callTool({ name: 'create_task', arguments: arguments_ })).isError).toBe(true);
+      expect(repository.tasksForDate(arguments_.task_date)).toHaveLength(1);
+    } finally {
+      otherConnection.close();
+      await client.close();
+      await server.close();
+    }
   });
 });

@@ -43,4 +43,5 @@ Live multi-device editing, collaboration, databases, canvases, and other general
 - Newly configured backup folders default to automatic hourly backups while Noteleaf is running; hourly, daily, weekly, and off remain available in Settings.
 - Retention is configurable from 5 to 50 backups; only files created by Noteleaf or a compatible pre-1.0 Notes version are eligible for cleanup.
 - Restore validates the archive and its database, creates a safety backup of the current library, then restarts and applies the replacement before SQLite opens.
+- Backups are limited to 5 GiB compressed/encrypted and 10 GiB expanded. Restore also limits expansion to half the available staging-disk space after reserving 256 MiB, because raw and extracted copies coexist. Oversized archives fail with an error and temporary restore files are removed.
 - Noteleaf does not connect to cloud accounts. Users can choose an ordinary local folder or one inside an installed Google Drive or OneDrive desktop sync location; the provider's sync app receives only the encrypted archive and can observe file metadata such as name, size, and timestamps.

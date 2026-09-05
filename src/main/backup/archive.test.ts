@@ -1,9 +1,16 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createHash, randomUUID } from 'node:crypto';
-import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { createArchive, createBackupKeyMaterial, extractArchive, readBackupManifest, type BackupKeyMaterial } from './archive.js';
+
+const limits = vi.hoisted(() => ({ expanded: 1024 * 1024, archive: 1024 * 1024 }));
+vi.mock('./limits.js', async (importOriginal) => ({
+  ...await importOriginal<typeof import('./limits.js')>(),
+  get MAX_EXPANDED_BYTES() { return limits.expanded; },
+  get MAX_ARCHIVE_BYTES() { return limits.archive; },
+}));
 
 const PASSWORD = 'a long backup password only I know';
 
@@ -25,6 +32,8 @@ describe('Noteleaf backup archive', () => {
   let material: BackupKeyMaterial;
 
   beforeEach(async () => {
+    limits.expanded = 1024 * 1024;
+    limits.archive = 1024 * 1024;
     root = join(process.cwd(), `.test-backup-${randomUUID()}`);
     source = join(root, 'source');
     archive = join(root, 'library.notesbackup');
@@ -101,5 +110,34 @@ describe('Noteleaf backup archive', () => {
   it('rejects files that are not Noteleaf backup archives', async () => {
     await writeFile(archive, 'not a backup');
     await expect(extractArchive(archive, restored)).rejects.toThrow();
+  });
+
+  it('bounds legacy decompression and cleans partial restore files', async () => {
+    await writeFile(archive, legacyArchive([{ path: 'notes.db', body: Buffer.alloc(2 * 1024 * 1024) }]));
+    await expect(extractArchive(archive, restored)).rejects.toThrow(/size|disk space/i);
+    expect(await readdir(root)).not.toContain('restored');
+    expect((await readdir(root)).some((name) => name.startsWith('.notes-restore-'))).toBe(false);
+  });
+
+  it('bounds encrypted decompression and preserves the size error', async () => {
+    await createArchive(source, archive, material);
+    limits.expanded = 16;
+    await expect(extractArchive(archive, restored, { material })).rejects.toThrow(/size|disk space/i);
+    expect(await readdir(root)).not.toContain('restored');
+    expect((await readdir(root)).some((name) => name.startsWith('.notes-restore-'))).toBe(false);
+  });
+
+  it('rejects oversized compressed files and entry declarations', async () => {
+    await writeFile(archive, Buffer.alloc(limits.archive + 1));
+    await expect(extractArchive(archive, restored)).rejects.toThrow(/size|disk space/i);
+    const payload = `NOTES_BACKUP_V1\n${JSON.stringify({ path: 'notes.db', size: Number.MAX_SAFE_INTEGER, sha256: 'invalid' })}\n`;
+    await writeFile(archive, gzipSync(payload));
+    await expect(extractArchive(archive, restored)).rejects.toThrow(/size|disk space/i);
+  });
+
+  it('does not publish a backup exceeding the restore size limits', async () => {
+    limits.expanded = 16;
+    await expect(createArchive(source, archive, material)).rejects.toThrow(/size|disk space/i);
+    await expect(readFile(archive)).rejects.toThrow();
   });
 });

@@ -1,9 +1,10 @@
 import { createCipheriv, createDecipheriv, createHash, hkdfSync, randomBytes, scrypt } from 'node:crypto';
 import { createReadStream, createWriteStream } from 'node:fs';
-import { appendFile, mkdir, open, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, open, readFile, readdir, rename, rm, stat, statfs, writeFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { pipeline } from 'node:stream/promises';
 import { createGunzip, createGzip } from 'node:zlib';
+import { BackupSizeError, limitBackupBytes, MAX_ARCHIVE_BYTES, MAX_EXPANDED_BYTES, RESTORE_DISK_RESERVE } from './limits.js';
 
 const PAYLOAD_MAGIC = 'NOTES_BACKUP_V1\n';
 const ENCRYPTED_MAGIC = 'NOTELEAF_ENCRYPTED_BACKUP_V2\n';
@@ -95,12 +96,15 @@ export async function createArchive(sourceDirectory: string, destination: string
   let key: Buffer | undefined;
   try {
     await writeFile(raw, PAYLOAD_MAGIC, { mode: 0o600 });
+    let payloadBytes = Buffer.byteLength(PAYLOAD_MAGIC) + Buffer.byteLength('{"end":true}\n');
     for (const path of files) {
       const file = await stat(path);
       const entryPath = relative(sourceDirectory, path).split(sep).join('/');
       const header: EntryHeader = { path: entryPath, size: file.size, sha256: await sha256(path) };
+      payloadBytes += Buffer.byteLength(`${JSON.stringify(header)}\n`) + file.size + 1;
+      if (payloadBytes > MAX_EXPANDED_BYTES) throw new BackupSizeError();
       await appendFile(raw, `${JSON.stringify(header)}\n`);
-      if (file.size) await pipeline(createReadStream(path), createWriteStream(raw, { flags: 'a' }));
+      if (file.size) await pipeline(createReadStream(path), limitBackupBytes(file.size), createWriteStream(raw, { flags: 'a' }));
       await appendFile(raw, '\n');
     }
     await appendFile(raw, '{"end":true}\n');
@@ -113,7 +117,7 @@ export async function createArchive(sourceDirectory: string, destination: string
     const cipher = createCipheriv('aes-256-gcm', key, iv, { authTagLength: TAG_LENGTH });
     cipher.setAAD(prefix);
     await writeFile(encrypted, prefix, { mode: 0o600 });
-    await pipeline(createReadStream(raw), createGzip({ level: 9 }), cipher, createWriteStream(encrypted, { flags: 'a' }));
+    await pipeline(createReadStream(raw), createGzip({ level: 9 }), cipher, limitBackupBytes(MAX_ARCHIVE_BYTES - prefix.length - TAG_LENGTH), createWriteStream(encrypted, { flags: 'a' }));
     await appendFile(encrypted, cipher.getAuthTag());
     await rm(destination, { force: true });
     await rename(encrypted, destination);
@@ -146,14 +150,15 @@ async function readLine(handle: Awaited<ReturnType<typeof open>>, offset: number
   throw new Error('Backup archive header is too large.');
 }
 
-async function decryptArchive(archive: string, raw: string, unlock: BackupUnlock): Promise<boolean> {
+async function decryptArchive(archive: string, raw: string, unlock: BackupUnlock, maximum: number): Promise<boolean> {
   const handle = await open(archive, 'r');
   let key: Buffer | undefined;
   try {
+    if ((await handle.stat()).size > MAX_ARCHIVE_BYTES) throw new BackupSizeError();
     const magic = Buffer.alloc(Buffer.byteLength(ENCRYPTED_MAGIC));
     const first = await handle.read(magic, 0, magic.length, 0);
     if (first.bytesRead !== magic.length || magic.toString('utf8') !== ENCRYPTED_MAGIC) {
-      await pipeline(createReadStream(archive), createGunzip(), createWriteStream(raw, { mode: 0o600 }));
+      await pipeline(createReadStream(archive), limitBackupBytes(MAX_ARCHIVE_BYTES), createGunzip(), limitBackupBytes(maximum), createWriteStream(raw, { mode: 0o600 }));
       return false;
     }
     const headerLine = await readLine(handle, magic.length);
@@ -175,8 +180,11 @@ async function decryptArchive(archive: string, raw: string, unlock: BackupUnlock
     decipher.setAAD(Buffer.from(`${ENCRYPTED_MAGIC}${headerLine.line}\n`, 'utf8'));
     decipher.setAuthTag(tag);
     try {
-      await pipeline(createReadStream(archive, { start: headerLine.next, end: cipherEnd }), decipher, createGunzip(), createWriteStream(raw, { mode: 0o600 }));
-    } catch { throw new Error('The backup password is incorrect or the encrypted backup is damaged.'); }
+      await pipeline(createReadStream(archive, { start: headerLine.next, end: cipherEnd }), limitBackupBytes(MAX_ARCHIVE_BYTES), decipher, createGunzip(), limitBackupBytes(maximum), createWriteStream(raw, { mode: 0o600 }));
+    } catch (error) {
+      if (error instanceof BackupSizeError) throw error;
+      throw new Error('The backup password is incorrect or the encrypted backup is damaged.');
+    }
     return true;
   } finally {
     key?.fill(0);
@@ -189,13 +197,18 @@ export async function extractArchive(archive: string, destination: string, unloc
   await rm(destination, { recursive: true, force: true });
   await mkdir(destination, { recursive: true });
   try {
-    const encrypted = await decryptArchive(archive, raw, unlock);
+    const disk = await statfs(dirname(destination));
+    // Raw payload and extracted files coexist until validation completes.
+    const maximum = Math.min(MAX_EXPANDED_BYTES, Math.floor((disk.bavail * disk.bsize - RESTORE_DISK_RESERVE) / 2));
+    if (maximum <= 0) throw new BackupSizeError();
+    const encrypted = await decryptArchive(archive, raw, unlock, maximum);
     const handle = await open(raw, 'r');
     try {
       const magic = Buffer.alloc(Buffer.byteLength(PAYLOAD_MAGIC));
       const first = await handle.read(magic, 0, magic.length, 0);
       if (first.bytesRead !== magic.length || magic.toString('utf8') !== PAYLOAD_MAGIC) throw new Error('This is not a supported Noteleaf backup.');
       let offset = magic.length;
+      const rawSize = (await handle.stat()).size;
       let entries = 0;
       while (true) {
         const headerLine = await readLine(handle, offset);
@@ -203,6 +216,7 @@ export async function extractArchive(archive: string, destination: string, unloc
         const header = JSON.parse(headerLine.line) as EntryHeader & { end?: boolean };
         if (header.end) break;
         if (typeof header.path !== 'string' || !Number.isSafeInteger(header.size) || header.size < 0 || typeof header.sha256 !== 'string') throw new Error('Backup archive metadata is invalid.');
+        if (header.size > maximum || header.size > rawSize - offset - 1) throw new BackupSizeError();
         const target = safeTarget(destination, header.path);
         await mkdir(dirname(target), { recursive: true });
         if (header.size) await pipeline(createReadStream(raw, { start: offset, end: offset + header.size - 1 }), createWriteStream(target, { mode: 0o600 }));

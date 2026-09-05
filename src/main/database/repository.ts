@@ -558,7 +558,7 @@ You are ready—turn this guide into your own first note, or keep it nearby as a
       FROM pages_fts JOIN pages p ON p.id = pages_fts.page_id
       JOIN sections s ON s.id = p.section_id JOIN notebooks n ON n.id = s.notebook_id
       WHERE pages_fts MATCH ? AND p.is_deleted = 0 AND p.is_encrypted = 0 ORDER BY rank LIMIT 50`).all(terms) as Row[];
-    const visible = rows.map((r) => ({ id: String(r.id), title: String(r.title), notebook: String(r.notebook), section: String(r.section), excerpt: String(r.excerpt), updatedAt: String(r.updated_at) }));
+    const visible = rows.map((r) => ({ id: String(r.id), title: String(r.title), notebook: String(r.notebook), section: String(r.section), excerpt: escapeHtml(String(r.excerpt)).replaceAll('&lt;mark&gt;', '<mark>').replaceAll('&lt;/mark&gt;', '</mark>'), updatedAt: String(r.updated_at) }));
     if (!this.vaultKey) return visible;
     const tokens = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
     const privateRows = this.db.prepare(`SELECT p.*, n.name AS notebook, s.name AS section
