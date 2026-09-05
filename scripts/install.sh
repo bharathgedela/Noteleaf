@@ -15,10 +15,21 @@ checksums_path="$temporary_dir/SHA256SUMS.txt"
 mount_path="$temporary_dir/mount"
 mounted=0
 download_pid=""
+install_staging=""
+installed_app=""
+install_complete=0
 
 cleanup() {
   if [ -n "$download_pid" ]; then kill "$download_pid" >/dev/null 2>&1 || true; fi
   if [ "$mounted" -eq 1 ]; then hdiutil detach "$mount_path" -quiet >/dev/null 2>&1 || true; fi
+  if [ -n "$install_staging" ]; then
+    if { [ -e "$install_staging/previous.app" ] || [ -L "$install_staging/previous.app" ]; } && [ ! -e "$installed_app" ] && [ ! -L "$installed_app" ]; then
+      mv "$install_staging/previous.app" "$installed_app" || echo "Previous app retained at $install_staging/previous.app" >&2
+    fi
+    if [ "$install_complete" -eq 1 ] || { [ ! -e "$install_staging/previous.app" ] && [ ! -L "$install_staging/previous.app" ]; }; then
+      rm -rf "$install_staging"
+    fi
+  fi
   rm -rf "$temporary_dir"
 }
 trap cleanup EXIT INT TERM
@@ -122,7 +133,15 @@ esac
 
 install_dir="$HOME/Applications"
 mkdir -p "$install_dir"
-ditto "$source_app" "$install_dir/Noteleaf.app"
+installed_app="$install_dir/Noteleaf.app"
+install_staging="$(mktemp -d "$install_dir/.noteleaf-update.XXXXXX")"
+ditto "$source_app" "$install_staging/Noteleaf.app"
+codesign --verify --deep --strict "$install_staging/Noteleaf.app"
+if [ -e "$installed_app" ] || [ -L "$installed_app" ]; then
+  mv "$installed_app" "$install_staging/previous.app"
+fi
+mv "$install_staging/Noteleaf.app" "$installed_app"
+install_complete=1
 hdiutil detach "$mount_path" -quiet
 mounted=0
 
