@@ -16,8 +16,12 @@ Run `npm run dist:win` on Windows. Inspect `release/Noteleaf-Setup.exe`, install
 
 Run `npm run dist:mac` on Apple Silicon and `npm run dist:mac:x64` on Intel hardware (or equivalent macOS CI runners). Inspect `release/Noteleaf-arm64.dmg` and `release/Noteleaf-x64.dmg`, open the app, verify Command-key shortcuts and file associations, and smoke-test editing, Tasks, Markdown links, and backups.
 
-Unsigned local builds can be used on the build Mac. Public distribution should use a Developer ID Application certificate and Apple notarization credentials supported by Electron Builder. macOS artifacts must be built on macOS; the Windows release job cannot produce a trustworthy signed/notarized DMG.
+Public macOS releases must be Developer ID signed, notarized, stapled, and validated. Apple private keys stay on the maintainer's Mac; do not upload them to GitHub. Use the local `noteleaf-notary` Keychain profile with `notarytool`. Never publish an unsigned macOS build.
+
+Build the signed apps with Electron Builder, submit their ZIPs to Apple, then staple and validate the apps. Recreate ZIPs from the stapled apps. Build the final DMGs with Electron Builder's `--prepackaged` option from those same stapled apps, then submit, staple, and validate each DMG. Keep submission IDs and wait for `Accepted`; do not duplicate an in-progress submission. Validate the app inside each final mounted DMG with `codesign --verify --deep --strict`, `xcrun stapler validate`, and `spctl --assess --type execute` (must report `Notarized Developer ID`). Also run `hdiutil verify` and `xcrun stapler validate` on the final DMGs.
 
 ## Publish
 
-Push the release commit and annotated tag. `.github/workflows/release.yml` builds Windows, Apple Silicon, and Intel assets, generates `SHA256SUMS.txt`, and publishes them to the tag's GitHub release. Confirm the workflow succeeds and smoke-test the README installation commands before announcing the release.
+Push the release commit and annotated tag only after CI succeeds. `.github/workflows/release.yml` builds Windows and creates a **draft**, not a public release. Build and notarize Apple Silicon and Intel assets locally from that exact tagged commit. Upload only the verified `Noteleaf-arm64.dmg`, `Noteleaf-arm64.zip`, `Noteleaf-x64.dmg`, and `Noteleaf-x64.zip` to the draft. Preserve these stable names because the install scripts use them.
+
+Download the draft's Windows installer into the same asset directory. Generate `SHA256SUMS.txt` for all five final installers only after stapling and upload it. Confirm every asset, version, signature, Apple ticket, and checksum before publishing the draft as the latest release. The curl installer resolves `/releases/latest/download`; it cannot see draft releases, so users keep receiving the previous version until the verified release is published. Smoke-test the exact downloadable artifact before announcing it.

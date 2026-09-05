@@ -25,48 +25,8 @@ jobs:
           path: release/Noteleaf-Setup.exe
           if-no-files-found: error
 
-  macos-arm64:
-    runs-on: macos-15
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run dist:mac
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-      - uses: actions/upload-artifact@v4
-        with:
-          name: macos-arm64-release
-          path: |
-            release/Noteleaf-arm64.dmg
-            release/Noteleaf-arm64.zip
-          if-no-files-found: error
-
-  macos-x64:
-    runs-on: macos-15-intel
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run dist:mac:x64
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-      - uses: actions/upload-artifact@v4
-        with:
-          name: macos-x64-release
-          path: |
-            release/Noteleaf-x64.dmg
-            release/Noteleaf-x64.zip
-          if-no-files-found: error
-
-  publish:
-    needs: [windows, macos-arm64, macos-x64]
+  draft:
+    needs: [windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -80,11 +40,10 @@ jobs:
         with:
           path: release-assets
           merge-multiple: true
-      - name: Generate checksums
-        working-directory: release-assets
-        run: sha256sum Noteleaf-* > SHA256SUMS.txt
-      - name: Publish GitHub release
+      # Apple signing keys stay on the maintainer's Mac. Never publish unsigned
+      # macOS assets or make this draft public before local notarization checks.
+      - name: Prepare private release draft
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ github.ref_name }}
-        run: gh release create "$RELEASE_TAG" release-assets/* --verify-tag --generate-notes --title "Noteleaf $RELEASE_TAG"
+        run: gh release create "$RELEASE_TAG" release-assets/Noteleaf-Setup.exe --draft --verify-tag --generate-notes --title "Noteleaf $RELEASE_TAG"
